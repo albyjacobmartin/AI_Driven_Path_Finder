@@ -3,26 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alliance University — A* Campus Pathfinder</title>
+<title>AI Driven Path Finder for Autonomous Vehicles - Design Project</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0d14;
-    --bg2: #0f1320;
-    --bg3: #151b2e;
-    --panel: #111827;
-    --border: rgba(255,255,255,0.07);
-    --border2: rgba(255,255,255,0.13);
-    --text: #e8eaf0;
-    --text2: #8892a4;
-    --text3: #4a5568;
-    --accent: #3b82f6;
-    --accent2: #6366f1;
-    --green: #22c55e;
-    --amber: #f59e0b;
-    --purple: #a855f7;
-    --red: #ef4444;
-    --teal: #14b8a6;
+    --bg: #f0f4f8;
+    --bg2: #e8edf3;
+    --bg3: #dde3ec;
+    --panel: #ffffff;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --text: #1a2233;
+    --text2: #4a5568;
+    --text3: #8a96a8;
+    --accent: #2563eb;
+    --accent2: #4f46e5;
+    --green: #16a34a;
+    --amber: #d97706;
+    --purple: #7c3aed;
+    --red: #dc2626;
+    --teal: #0d9488;
     --font-head: 'Syne', sans-serif;
     --font-body: 'DM Sans', sans-serif;
     --font-mono: 'DM Mono', monospace;
@@ -44,21 +44,21 @@
     position: fixed;
     inset: 0;
     background-image:
-      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+      linear-gradient(rgba(37,99,235,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(37,99,235,0.06) 1px, transparent 1px);
     background-size: 40px 40px;
     pointer-events: none;
     z-index: 0;
   }
 
-  /* GLOW ORB */
+  /* SUBTLE TOP ACCENT */
   body::after {
     content: '';
     position: fixed;
     top: -200px; left: 50%;
     transform: translateX(-50%);
     width: 800px; height: 500px;
-    background: radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 70%);
+    background: radial-gradient(ellipse at center, rgba(37,99,235,0.05) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
   }
@@ -70,7 +70,7 @@
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
     flex-wrap: wrap; gap: 16px;
-    background: rgba(10,13,20,0.85);
+    background: rgba(255,255,255,0.92);
     backdrop-filter: blur(12px);
   }
 
@@ -112,9 +112,9 @@
     font-family: var(--font-mono);
     letter-spacing: 0.3px;
   }
-  .badge-blue { background: rgba(59,130,246,0.1); color: #93c5fd; border-color: rgba(59,130,246,0.25); }
-  .badge-green { background: rgba(34,197,94,0.1); color: #86efac; border-color: rgba(34,197,94,0.25); }
-  .badge-purple { background: rgba(168,85,247,0.1); color: #d8b4fe; border-color: rgba(168,85,247,0.25); }
+  .badge-blue { background: rgba(37,99,235,0.08); color: #1d4ed8; border-color: rgba(37,99,235,0.2); }
+  .badge-green { background: rgba(22,163,74,0.08); color: #15803d; border-color: rgba(22,163,74,0.2); }
+  .badge-purple { background: rgba(124,58,237,0.08); color: #6d28d9; border-color: rgba(124,58,237,0.2); }
 
   /* MAIN LAYOUT */
   main {
@@ -169,7 +169,7 @@
     font-size: 13px;
     font-family: var(--font-body);
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238892a4' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 10px center;
     cursor: pointer;
@@ -201,18 +201,18 @@
   .btn-primary:hover { box-shadow: 0 0 30px rgba(59,130,246,0.35); transform: translateY(-1px); }
 
   .btn-secondary {
-    background: rgba(255,255,255,0.04);
+    background: rgba(0,0,0,0.03);
     color: var(--text2);
     border-color: var(--border2);
   }
-  .btn-secondary:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+  .btn-secondary:hover { background: rgba(0,0,0,0.07); color: var(--text); }
 
   .btn-danger {
     background: rgba(239,68,68,0.08);
-    color: #fca5a5;
-    border-color: rgba(239,68,68,0.2);
+    color: #b91c1c;
+    border-color: rgba(239,68,68,0.25);
   }
-  .btn-danger:hover { background: rgba(239,68,68,0.15); }
+  .btn-danger:hover { background: rgba(239,68,68,0.15); color: #991b1b; }
 
   /* SPEED CONTROL */
   .speed-control { display: flex; flex-direction: column; gap: 8px; }
@@ -226,7 +226,7 @@
     font-family: var(--font-mono);
     font-size: 12px;
     color: var(--accent);
-    background: rgba(59,130,246,0.1);
+    background: rgba(37,99,235,0.08);
     padding: 2px 8px;
     border-radius: 4px;
   }
@@ -328,13 +328,13 @@
     display: flex; align-items: center; gap: 12px;
     font-size: 12px; color: var(--text2);
     font-family: var(--font-mono);
-    background: rgba(15,19,32,0.9);
+    background: rgba(255,255,255,0.9);
   }
 
   .toolbar-pill {
     padding: 3px 10px;
     border-radius: 20px;
-    background: rgba(255,255,255,0.04);
+    background: rgba(0,0,0,0.04);
     border: 1px solid var(--border2);
     font-size: 11px;
   }
@@ -360,7 +360,7 @@
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--text3);
-    background: rgba(10,13,20,0.95);
+    background: rgba(255,255,255,0.95);
   }
 
   .status-dot {
@@ -393,13 +393,13 @@
   <div class="header-left">
     <div class="logo-mark">A*</div>
     <div class="header-title">
-      <h1>Alliance University Campus Pathfinder</h1>
-      <p>autonomous electric kart · a* algorithm · real campus topology</p>
+      <h1>AI Driven Path Finder for Autonomous Vehicles</h1>
+      <p>Design Project BTech AI ML Team 04</p>
     </div>
   </div>
   <div class="header-badge">
     <span class="badge badge-blue">A* Search</span>
-    <span class="badge badge-green">25 Nodes · 27 Edges</span>
+    <span class="badge badge-green">25 Nodes · 28 Edges</span>
     <span class="badge badge-purple">Euclidean Heuristic</span>
   </div>
 </header>
@@ -481,12 +481,12 @@
     <div class="sidebar-section">
       <div class="section-label">Legend</div>
       <div class="legend-grid">
-        <div class="leg-item"><span class="leg-dot" style="background:#22c55e;box-shadow:0 0 6px #22c55e"></span>Start node</div>
-        <div class="leg-item"><span class="leg-dot" style="background:#f59e0b;box-shadow:0 0 6px #f59e0b"></span>Goal node</div>
-        <div class="leg-item"><span class="leg-dot" style="background:#a855f7"></span>Optimal path</div>
-        <div class="leg-item"><span class="leg-dot" style="background:#ef4444"></span>Named landmark</div>
-        <div class="leg-item"><span class="leg-dot" style="background:#3b82f6"></span>Junction node</div>
-        <div class="leg-item"><span class="leg-dot" style="background:rgba(99,102,241,0.4)"></span>Explored nodes</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#16a34a;box-shadow:0 0 5px #16a34a55"></span>Start node</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#d97706;box-shadow:0 0 5px #d9770655"></span>Goal node</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#7c3aed"></span>Optimal path</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#dc2626"></span>Named landmark</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#2563eb"></span>Junction node</div>
+        <div class="leg-item"><span class="leg-dot" style="background:rgba(99,102,241,0.35);border:1px solid rgba(99,102,241,0.5)"></span>Explored nodes</div>
         <div class="leg-item"><span class="leg-dot" style="background:#fbbf24;border-radius:3px"></span>Autonomous kart</div>
       </div>
     </div>
@@ -560,7 +560,8 @@ const EDGES_RAW = [
   ['Activity centre','Law block',35],['Law block','N',25],
   ['N','O',75],['N','M',110],['O','Department store',43],['O','Food court',32],
   ['M','L',80],['L','K',70],['K','J',60],
-  ['F','Law block',95],['G','Auditorium',120],['Department store','J',85],
+  // New shortcut connections
+  ['F','Law block',95],['G','Auditorium',120],['Department store','J',85],['I','Department store',80],
 ];
 
 const adj = {};
@@ -617,7 +618,7 @@ function draw() {
   ctx.clearRect(0, 0, W, H);
 
   // Subtle dot grid
-  ctx.fillStyle = 'rgba(59,130,246,0.08)';
+  ctx.fillStyle = 'rgba(37,99,235,0.12)';
   for(let x=0;x<W;x+=50) for(let y=0;y<H;y+=50) {
     ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fill();
   }
@@ -630,23 +631,22 @@ function draw() {
     if(onPath) {
       // Glow effect for path
       ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
-      ctx.strokeStyle = 'rgba(168,85,247,0.25)'; ctx.lineWidth = 8; ctx.stroke();
+      ctx.strokeStyle = 'rgba(124,58,237,0.2)'; ctx.lineWidth = 8; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
-      ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 2.5; ctx.stroke();
 
       // Weight label
       const mx=(pa.x+pb.x)/2, my=(pa.y+pb.y)/2;
       ctx.font = '500 11px "DM Mono", monospace';
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillStyle='rgba(168,85,247,0.9)';
       const tw = ctx.measureText(w+'m').width;
-      ctx.fillStyle='rgba(15,19,32,0.75)';
+      ctx.fillStyle='rgba(245,243,255,0.92)';
       ctx.fillRect(mx-tw/2-4, my-8, tw+8, 14);
-      ctx.fillStyle='#d8b4fe';
+      ctx.fillStyle='#6d28d9';
       ctx.fillText(w+'m', mx, my+1);
     } else {
       ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
-      ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.stroke();
+      ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1.2; ctx.stroke();
     }
   });
 
@@ -655,8 +655,8 @@ function draw() {
     if(n===state.start||n===state.end) return;
     const p=px(n);
     ctx.beginPath(); ctx.arc(p.x,p.y,10,0,Math.PI*2);
-    ctx.fillStyle='rgba(99,102,241,0.12)'; ctx.fill();
-    ctx.strokeStyle='rgba(99,102,241,0.3)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle='rgba(99,102,241,0.1)'; ctx.fill();
+    ctx.strokeStyle='rgba(99,102,241,0.35)'; ctx.lineWidth=1; ctx.stroke();
   });
 
   // Nodes
@@ -667,30 +667,28 @@ function draw() {
     const isLM=NODES[n].landmark;
 
     let color, r, glow=false;
-    if(isStart)       { color='#22c55e'; r=9; glow=true; }
-    else if(isEnd)    { color='#f59e0b'; r=9; glow=true; }
-    else if(onPath)   { color='#a855f7'; r=isLM?7:5.5; }
-    else if(isLM)     { color='#ef4444'; r=6; }
-    else              { color='#3b82f6'; r=4.5; }
+    if(isStart)       { color='#16a34a'; r=9; glow=true; }
+    else if(isEnd)    { color='#d97706'; r=9; glow=true; }
+    else if(onPath)   { color='#7c3aed'; r=isLM?7:5.5; }
+    else if(isLM)     { color='#dc2626'; r=6; }
+    else              { color='#2563eb'; r=4.5; }
 
     if(glow) {
-      ctx.beginPath(); ctx.arc(p.x,p.y,r+7,0,Math.PI*2);
-      ctx.fillStyle=color.replace(')',',0.2)').replace('rgb(','rgba('); 
-      // simple glow ring
-      const g=ctx.createRadialGradient(p.x,p.y,r,p.x,p.y,r+7);
-      g.addColorStop(0, color+(isStart?'66':'44'));
+      const g=ctx.createRadialGradient(p.x,p.y,r,p.x,p.y,r+8);
+      g.addColorStop(0, color+'55');
       g.addColorStop(1,'transparent');
+      ctx.beginPath(); ctx.arc(p.x,p.y,r+8,0,Math.PI*2);
       ctx.fillStyle=g; ctx.fill();
     }
 
     ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2);
     ctx.fillStyle=color; ctx.fill();
-    ctx.strokeStyle='rgba(10,13,20,0.8)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=1.8; ctx.stroke();
 
     // Inner dot for larger nodes
     if(r>=6) {
       ctx.beginPath(); ctx.arc(p.x,p.y,r*0.35,0,Math.PI*2);
-      ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.fill();
     }
 
     // Label
@@ -698,10 +696,10 @@ function draw() {
     ctx.font = (isLM||isStart||isEnd?'500 ':'400 ')+(isStart||isEnd?12:isLM?11:10)+'px "DM Sans", sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='top';
     const lx=p.x, ly=p.y+r+3;
-    ctx.fillStyle='rgba(10,13,20,0.7)';
     const tw=ctx.measureText(lbl).width;
+    ctx.fillStyle='rgba(255,255,255,0.88)';
     ctx.fillRect(lx-tw/2-3, ly-1, tw+6, (isStart||isEnd?14:isLM?13:11)+2);
-    ctx.fillStyle=isStart?'#86efac':isEnd?'#fde68a':onPath?'#d8b4fe':isLM?'#fca5a5':'#93c5fd';
+    ctx.fillStyle=isStart?'#14532d':isEnd?'#78350f':onPath?'#4c1d95':isLM?'#7f1d1d':'#1e3a8a';
     ctx.fillText(lbl, lx, ly);
   });
 
@@ -723,7 +721,7 @@ function draw() {
     ctx.fillStyle='#fffbeb';
     ctx.fillRect(7,-4,4,3); ctx.fillRect(7,1,4,3);
     // Wheels
-    ctx.fillStyle='#1c1917';
+    ctx.fillStyle='#374151';
     ctx.fillRect(-9,-7,5,2.5); ctx.fillRect(-9,4.5,5,2.5);
     ctx.fillRect(5,-7,5,2.5);  ctx.fillRect(5,4.5,5,2.5);
     ctx.restore();
