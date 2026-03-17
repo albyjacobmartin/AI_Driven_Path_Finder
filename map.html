@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alliance University — A* Campus Pathfinder</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d14;
+    --bg2: #0f1320;
+    --bg3: #151b2e;
+    --panel: #111827;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8eaf0;
+    --text2: #8892a4;
+    --text3: #4a5568;
+    --accent: #3b82f6;
+    --accent2: #6366f1;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --purple: #a855f7;
+    --red: #ef4444;
+    --teal: #14b8a6;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* GLOW ORB */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 800px; height: 500px;
+    background: radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HEADER */
+  header {
+    position: relative; z-index: 10;
+    padding: 32px 40px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+    background: rgba(10,13,20,0.85);
+    backdrop-filter: blur(12px);
+  }
+
+  .header-left { display: flex; align-items: center; gap: 16px; }
+
+  .logo-mark {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head);
+    font-size: 18px; font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .header-title h1 {
+    font-family: var(--font-head);
+    font-size: 20px; font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .header-title p {
+    font-size: 12px; color: var(--text2);
+    font-family: var(--font-mono);
+    margin-top: 2px;
+  }
+
+  .header-badge {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+
+  .badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+    border: 1px solid;
+    font-family: var(--font-mono);
+    letter-spacing: 0.3px;
+  }
+  .badge-blue { background: rgba(59,130,246,0.1); color: #93c5fd; border-color: rgba(59,130,246,0.25); }
+  .badge-green { background: rgba(34,197,94,0.1); color: #86efac; border-color: rgba(34,197,94,0.25); }
+  .badge-purple { background: rgba(168,85,247,0.1); color: #d8b4fe; border-color: rgba(168,85,247,0.25); }
+
+  /* MAIN LAYOUT */
+  main {
+    position: relative; z-index: 5;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    height: calc(100vh - 89px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 14px;
+  }
+
+  /* NODE SELECTORS */
+  .node-selector {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  .sel-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .sel-group label {
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+  }
+
+  .sel-group select {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--font-body);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238892a4' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .sel-group select:focus { outline: none; border-color: var(--accent); }
+
+  /* BUTTONS */
+  .btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+
+  .btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.18s;
+    border: 1px solid;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 0 20px rgba(59,130,246,0.2);
+  }
+  .btn-primary:hover { box-shadow: 0 0 30px rgba(59,130,246,0.35); transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.04);
+    color: var(--text2);
+    border-color: var(--border2);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+
+  .btn-danger {
+    background: rgba(239,68,68,0.08);
+    color: #fca5a5;
+    border-color: rgba(239,68,68,0.2);
+  }
+  .btn-danger:hover { background: rgba(239,68,68,0.15); }
+
+  /* SPEED CONTROL */
+  .speed-control { display: flex; flex-direction: column; gap: 8px; }
+
+  .speed-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--text2);
+  }
+
+  .speed-val {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(59,130,246,0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--accent);
+    height: 4px;
+    cursor: pointer;
+  }
+
+  /* STATS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .stat-card .s-label {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 4px;
+  }
+
+  .stat-card .s-val {
+    font-size: 20px;
+    font-weight: 600;
+    font-family: var(--font-head);
+    color: var(--text);
+  }
+
+  .stat-card .s-val.accent { color: var(--accent); }
+  .stat-card .s-val.green { color: var(--green); }
+  .stat-card .s-val.purple { color: var(--purple); }
+
+  /* PATH LOG */
+  .path-log {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+    line-height: 1.7;
+    min-height: 60px;
+    word-break: break-word;
+  }
+
+  /* LEGEND */
+  .legend-grid {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+
+  .leg-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text2);
+  }
+
+  .leg-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* ALGO INFO */
+  .algo-info {
+    font-size: 12px; color: var(--text2);
+    line-height: 1.7;
+  }
+
+  .algo-info code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--teal);
+    background: rgba(20,184,166,0.1);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* CANVAS AREA */
+  .canvas-area {
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  .canvas-toolbar {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+    font-size: 12px; color: var(--text2);
+    font-family: var(--font-mono);
+    background: rgba(15,19,32,0.9);
+  }
+
+  .toolbar-pill {
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border2);
+    font-size: 11px;
+  }
+
+  #canvas-wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    padding: 8px 20px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+    background: rgba(10,13,20,0.95);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  #status-msg { color: var(--text2); }
+
+  /* MOBILE */
+  @media (max-width: 768px) {
+    main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
+    .sidebar { max-height: 380px; border-right: none; border-bottom: 1px solid var(--border); }
+    .canvas-area { height: 55vh; }
+    header { padding: 16px 20px; }
+    .header-badge { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-mark">A*</div>
+    <div class="header-title">
+      <h1>Alliance University Campus Pathfinder</h1>
+      <p>autonomous electric kart · a* algorithm · real campus topology</p>
+    </div>
+  </div>
+  <div class="header-badge">
+    <span class="badge badge-blue">A* Search</span>
+    <span class="badge badge-green">25 Nodes</span>
+    <span class="badge badge-purple">Euclidean Heuristic</span>
+  </div>
+</header>
+
+<main>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="section-label">Route Planner</div>
+      <div class="node-selector">
+        <div class="sel-group">
+          <label>▲ Start Node</label>
+          <select id="sel-start"></select>
+        </div>
+        <div class="sel-group">
+          <label>▼ Goal Node</label>
+          <select id="sel-end"></select>
+        </div>
+      </div>
+      <div class="btn-group" style="margin-top:14px">
+        <button class="btn btn-primary" onclick="runAStar()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35M11 8v6M8 11h6"/></svg>
+          Find Optimal Path
+        </button>
+        <button class="btn btn-secondary" onclick="animateKart()" id="btn-anim">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Animate Kart
+        </button>
+        <button class="btn btn-danger" onclick="resetAll()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Animation Speed</div>
+      <div class="speed-control">
+        <div class="speed-row">
+          <span>Kart speed</span>
+          <span class="speed-val" id="speed-lbl">5×</span>
+        </div>
+        <input type="range" id="speed" min="1" max="10" value="5" step="1"
+          oninput="document.getElementById('speed-lbl').textContent=this.value+'×'">
+        <div class="speed-row" style="font-size:10px; color:var(--text3)">
+          <span>slow</span><span>fast</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Path Statistics</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="s-label">Distance</div>
+          <div class="s-val accent" id="dist-val">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="s-label">Explored</div>
+          <div class="s-val purple" id="explored-val">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="s-label">Path nodes</div>
+          <div class="s-val green" id="path-val">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="s-label">Heuristic</div>
+          <div class="s-val" style="font-size:12px;font-family:var(--font-mono);color:var(--teal)">Euclidean</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Route Sequence</div>
+      <div class="path-log" id="log">Select start &amp; end, then find path.</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Legend</div>
+      <div class="legend-grid">
+        <div class="leg-item"><span class="leg-dot" style="background:#22c55e;box-shadow:0 0 6px #22c55e"></span>Start node</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#f59e0b;box-shadow:0 0 6px #f59e0b"></span>Goal node</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#a855f7"></span>Optimal path</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#ef4444"></span>Named landmark</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#3b82f6"></span>Junction node</div>
+        <div class="leg-item"><span class="leg-dot" style="background:rgba(99,102,241,0.4)"></span>Explored nodes</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#fbbf24;border-radius:3px"></span>Autonomous kart</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">About the Algorithm</div>
+      <div class="algo-info">
+        A* finds the shortest path by combining actual cost <code>g(n)</code> and a heuristic estimate <code>h(n)</code>. Total score: <code>f(n) = g(n) + h(n)</code>. Euclidean distance is used as the admissible heuristic, guaranteeing the optimal path on this campus graph.
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- CANVAS AREA -->
+  <div class="canvas-area">
+    <div class="canvas-toolbar">
+      <span class="toolbar-pill">Alliance University · Anekal, Karnataka</span>
+      <span style="flex:1"></span>
+      <span id="toolbar-status" style="color:var(--text3)">ready</span>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="c"></canvas>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span>system online</span>
+      <span style="color:var(--border2)">|</span>
+      <span id="status-msg">awaiting route input</span>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const NODES = {
+  'Entrance':         {x:0.09, y:0.14, label:'Entrance',         landmark:true},
+  'Admin block':      {x:0.07, y:0.24, label:'Admin block',      landmark:true},
+  'A':                {x:0.21, y:0.19, label:'A',                 landmark:false},
+  'Library':          {x:0.31, y:0.24, label:'Library',          landmark:true},
+  'B':                {x:0.31, y:0.30, label:'B',                 landmark:false},
+  'C':                {x:0.34, y:0.30, label:'C',                 landmark:false},
+  'D':                {x:0.40, y:0.21, label:'D',                 landmark:false},
+  'Engineering block':{x:0.35, y:0.12, label:'Eng. Block',       landmark:true},
+  'E':                {x:0.54, y:0.21, label:'E',                 landmark:false},
+  'Auditorium':       {x:0.68, y:0.22, label:'Auditorium',       landmark:true},
+  'F':                {x:0.43, y:0.36, label:'F',                 landmark:false},
+  'G':                {x:0.53, y:0.33, label:'G',                 landmark:false},
+  'Business block':   {x:0.62, y:0.38, label:'Business Block',   landmark:true},
+  'H':                {x:0.68, y:0.40, label:'H',                 landmark:false},
+  'I':                {x:0.69, y:0.50, label:'I',                 landmark:false},
+  'Activity centre':  {x:0.53, y:0.50, label:'Activity Centre',  landmark:true},
+  'Law block':        {x:0.47, y:0.53, label:'Law Block',        landmark:true},
+  'N':                {x:0.47, y:0.60, label:'N',                 landmark:false},
+  'O':                {x:0.58, y:0.60, label:'O',                 landmark:false},
+  'Food court':       {x:0.54, y:0.65, label:'Food Court',       landmark:true},
+  'Department store': {x:0.68, y:0.62, label:'Dept. Store',      landmark:true},
+  'M':                {x:0.47, y:0.71, label:'M',                 landmark:false},
+  'L':                {x:0.57, y:0.71, label:'L',                 landmark:false},
+  'K':                {x:0.57, y:0.82, label:'K',                 landmark:false},
+  'J':                {x:0.65, y:0.82, label:'J',                 landmark:false},
+};
+
+const EDGES_RAW = [
+  ['Entrance','A',101],['Admin block','A',58],['A','Library',96],
+  ['Library','B',36],['B','C',32],['B','F',88],
+  ['C','D',61],['D','Engineering block',50],['D','E',91],
+  ['E','Auditorium',96],['F','G',75],['G','Business block',62],
+  ['Business block','H',56],['H','I',117],['I','Activity centre',40],
+  ['Activity centre','Law block',35],['Law block','N',25],
+  ['N','O',75],['N','M',110],['O','Department store',43],['O','Food court',32],
+  ['M','L',80],['L','K',70],['K','J',60],
+];
+
+const adj = {};
+Object.keys(NODES).forEach(n => adj[n] = []);
+EDGES_RAW.forEach(([a,b,w]) => { adj[a].push({to:b,w}); adj[b].push({to:a,w}); });
+const nodeList = Object.keys(NODES);
+
+// Populate selects
+const selStart = document.getElementById('sel-start');
+const selEnd = document.getElementById('sel-end');
+nodeList.forEach(n => {
+  selStart.add(new Option(NODES[n].label, n));
+  selEnd.add(new Option(NODES[n].label, n));
+});
+selStart.value = 'Entrance';
+selEnd.value = 'Auditorium';
+
+// Canvas setup
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  draw();
+}
+
+window.addEventListener('resize', resize);
+setTimeout(resize, 100);
+
+function px(n) {
+  return { x: NODES[n].x * W * 0.92 + W * 0.04, y: NODES[n].y * H * 0.90 + H * 0.05 };
+}
+
+let state = { path:[], explored:new Set(), start:null, end:null, kartPos:null, animId:null };
+
+function isOnPath(a, b) {
+  const p = state.path;
+  for(let i=0;i<p.length-1;i++) {
+    if((p[i]===a&&p[i+1]===b)||(p[i]===b&&p[i+1]===a)) return true;
+  }
+  return false;
+}
+
+function draw() {
+  if(!W||!H) return;
+  ctx.clearRect(0, 0, W, H);
+
+  // Subtle dot grid
+  ctx.fillStyle = 'rgba(59,130,246,0.08)';
+  for(let x=0;x<W;x+=50) for(let y=0;y<H;y+=50) {
+    ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fill();
+  }
+
+  // Draw edges
+  EDGES_RAW.forEach(([a,b,w]) => {
+    const pa = px(a), pb = px(b);
+    const onPath = isOnPath(a,b);
+
+    if(onPath) {
+      // Glow effect for path
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
+      ctx.strokeStyle = 'rgba(168,85,247,0.25)'; ctx.lineWidth = 8; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
+      ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 2.5; ctx.stroke();
+
+      // Weight label
+      const mx=(pa.x+pb.x)/2, my=(pa.y+pb.y)/2;
+      ctx.font = '500 11px "DM Mono", monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(168,85,247,0.9)';
+      const tw = ctx.measureText(w+'m').width;
+      ctx.fillStyle='rgba(15,19,32,0.75)';
+      ctx.fillRect(mx-tw/2-4, my-8, tw+8, 14);
+      ctx.fillStyle='#d8b4fe';
+      ctx.fillText(w+'m', mx, my+1);
+    } else {
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
+      ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.stroke();
+    }
+  });
+
+  // Explored nodes
+  state.explored.forEach(n => {
+    if(n===state.start||n===state.end) return;
+    const p=px(n);
+    ctx.beginPath(); ctx.arc(p.x,p.y,10,0,Math.PI*2);
+    ctx.fillStyle='rgba(99,102,241,0.12)'; ctx.fill();
+    ctx.strokeStyle='rgba(99,102,241,0.3)'; ctx.lineWidth=1; ctx.stroke();
+  });
+
+  // Nodes
+  nodeList.forEach(n => {
+    const p=px(n);
+    const isStart=n===state.start, isEnd=n===state.end;
+    const onPath=state.path.includes(n);
+    const isLM=NODES[n].landmark;
+
+    let color, r, glow=false;
+    if(isStart)       { color='#22c55e'; r=9; glow=true; }
+    else if(isEnd)    { color='#f59e0b'; r=9; glow=true; }
+    else if(onPath)   { color='#a855f7'; r=isLM?7:5.5; }
+    else if(isLM)     { color='#ef4444'; r=6; }
+    else              { color='#3b82f6'; r=4.5; }
+
+    if(glow) {
+      ctx.beginPath(); ctx.arc(p.x,p.y,r+7,0,Math.PI*2);
+      ctx.fillStyle=color.replace(')',',0.2)').replace('rgb(','rgba('); 
+      // simple glow ring
+      const g=ctx.createRadialGradient(p.x,p.y,r,p.x,p.y,r+7);
+      g.addColorStop(0, color+(isStart?'66':'44'));
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle=g; ctx.fill();
+    }
+
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.strokeStyle='rgba(10,13,20,0.8)'; ctx.lineWidth=1.5; ctx.stroke();
+
+    // Inner dot for larger nodes
+    if(r>=6) {
+      ctx.beginPath(); ctx.arc(p.x,p.y,r*0.35,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
+    }
+
+    // Label
+    const lbl=NODES[n].label;
+    ctx.font = (isLM||isStart||isEnd?'500 ':'400 ')+(isStart||isEnd?12:isLM?11:10)+'px "DM Sans", sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    const lx=p.x, ly=p.y+r+3;
+    ctx.fillStyle='rgba(10,13,20,0.7)';
+    const tw=ctx.measureText(lbl).width;
+    ctx.fillRect(lx-tw/2-3, ly-1, tw+6, (isStart||isEnd?14:isLM?13:11)+2);
+    ctx.fillStyle=isStart?'#86efac':isEnd?'#fde68a':onPath?'#d8b4fe':isLM?'#fca5a5':'#93c5fd';
+    ctx.fillText(lbl, lx, ly);
+  });
+
+  // Kart
+  if(state.kartPos) {
+    const kp=state.kartPos;
+    ctx.save();
+    ctx.translate(kp.x, kp.y);
+    ctx.rotate(kp.angle||0);
+    // Shadow
+    ctx.shadowColor='rgba(251,191,36,0.5)';
+    ctx.shadowBlur=12;
+    // Body
+    ctx.beginPath(); ctx.roundRect(-9,-5.5,18,11,3);
+    ctx.fillStyle='#fbbf24'; ctx.fill();
+    ctx.strokeStyle='#92400e'; ctx.lineWidth=1; ctx.stroke();
+    // Headlights
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#fffbeb';
+    ctx.fillRect(7,-4,4,3); ctx.fillRect(7,1,4,3);
+    // Wheels
+    ctx.fillStyle='#1c1917';
+    ctx.fillRect(-9,-7,5,2.5); ctx.fillRect(-9,4.5,5,2.5);
+    ctx.fillRect(5,-7,5,2.5);  ctx.fillRect(5,4.5,5,2.5);
+    ctx.restore();
+  }
+}
+
+// A* algorithm
+function heuristic(a,b) {
+  const pa=px(a), pb=px(b);
+  return Math.hypot(pa.x-pb.x, pa.y-pb.y);
+}
+
+function astar(start, end) {
+  const dist={}, prev={}, fScore={};
+  nodeList.forEach(n=>{ dist[n]=Infinity; fScore[n]=Infinity; });
+  dist[start]=0; fScore[start]=heuristic(start,end);
+  const open=new Set([start]), closed=new Set();
+
+  while(open.size>0) {
+    let cur=null;
+    open.forEach(n=>{ if(!cur||fScore[n]<fScore[cur]) cur=n; });
+    if(cur===end) break;
+    open.delete(cur); closed.add(cur);
+    adj[cur].forEach(({to,w})=>{
+      if(closed.has(to)) return;
+      const tentative=dist[cur]+w;
+      if(tentative<dist[to]) {
+        dist[to]=tentative; fScore[to]=tentative+heuristic(to,end);
+        prev[to]=cur; open.add(to);
+      }
+    });
+  }
+  const path=[]; let cur=end;
+  while(cur){ path.unshift(cur); cur=prev[cur]; }
+  if(path[0]!==start) return {path:[],explored:closed,dist:Infinity};
+  return {path, explored:closed, dist:dist[end]};
+}
+
+function setStatus(msg) {
+  document.getElementById('status-msg').textContent=msg;
+  document.getElementById('toolbar-status').textContent=msg;
+}
+
+function runAStar() {
+  if(state.animId){ cancelAnimationFrame(state.animId); state.animId=null; }
+  const start=selStart.value, end=selEnd.value;
+  if(start===end){ setStatus('start and goal must differ'); return; }
+  state.start=start; state.end=end; state.kartPos=null;
+  const res=astar(start,end);
+  state.path=res.path; state.explored=res.explored;
+
+  document.getElementById('dist-val').textContent=res.dist===Infinity?'none':res.dist+'m';
+  document.getElementById('explored-val').textContent=res.explored.size;
+  document.getElementById('path-val').textContent=res.path.length;
+
+  if(res.path.length===0) {
+    document.getElementById('log').textContent='No path found.';
+    setStatus('no path found');
+  } else {
+    document.getElementById('log').textContent='→ '+res.path.map(n=>NODES[n].label).join(' → ');
+    setStatus(`path found · ${res.dist}m · ${res.path.length} stops`);
+  }
+  draw();
+}
+
+function animateKart() {
+  if(!state.path||state.path.length<2){ runAStar(); setTimeout(animateKart,300); return; }
+  if(state.animId){ cancelAnimationFrame(state.animId); state.animId=null; state.kartPos=null; draw(); return; }
+  const path=state.path;
+  let segIdx=0, t=0;
+  document.getElementById('btn-anim').innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Stop Kart';
+  setStatus('kart navigating...');
+
+  function step() {
+    if(segIdx>=path.length-1){
+      state.kartPos=null; draw(); state.animId=null;
+      document.getElementById('btn-anim').innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Animate Kart';
+      setStatus('destination reached · '+document.getElementById('dist-val').textContent);
+      return;
+    }
+    const a=px(path[segIdx]), b=px(path[segIdx+1]);
+    const dx=b.x-a.x, dy=b.y-a.y;
+    state.kartPos={x:a.x+dx*t, y:a.y+dy*t, angle:Math.atan2(dy,dx)};
+    draw();
+    t+=parseInt(document.getElementById('speed').value)*0.005;
+    if(t>=1){ t=0; segIdx++; }
+    state.animId=requestAnimationFrame(step);
+  }
+  step();
+}
+
+function resetAll() {
+  if(state.animId){ cancelAnimationFrame(state.animId); state.animId=null; }
+  state={path:[],explored:new Set(),start:null,end:null,kartPos:null,animId:null};
+  document.getElementById('dist-val').textContent='—';
+  document.getElementById('explored-val').textContent='—';
+  document.getElementById('path-val').textContent='—';
+  document.getElementById('log').textContent='Select start & end, then find path.';
+  document.getElementById('btn-anim').innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Animate Kart';
+  setStatus('awaiting route input');
+  draw();
+}
+</script>
+</body>
+</html>
