@@ -1,0 +1,26 @@
+| Node 1          | Node 2            | Distance |
+| --------------- | ----------------- | -------- |
+| Entrance        | A                 | 101      |
+| Admin block     | A                 | 58       |
+| A               | Library           | 96       |
+| Library         | B                 | 36       |
+| B               | C                 | 32       |
+| C               | D                 | 61       |
+| D               | Engineering block | 50       |
+| D               | E                 | 91       |
+| E               | Auditorium        | 96       |
+| B               | F                 | 88       |
+| F               | G                 | 75       |
+| G               | Business block    | 62       |
+| Business block  | H                 | 56       |
+| H               | I                 | 117      |
+| I               | Activity centre   | 40       |
+| Activity centre | Law block         | 35       |
+| Law block       | N                 | 25       |
+| N               | O                 | 75       |
+| O               | Department store  | 43       |
+| O               | Food court        | 32       |
+| N               | M                 | 110      |
+| M               | L                 | 80       |
+| L               | K                 | 70       |
+| K               | J                 | 60       |
