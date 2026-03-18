@@ -24,3 +24,5 @@
 | M               | L                 | 80       |
 | L               | K                 | 70       |
 | K               | J                 | 60       |
+
+these are not real distances, they are relative distance from each nodes based on the smallest edges in the graph.
