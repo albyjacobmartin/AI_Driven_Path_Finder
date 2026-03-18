@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alliance EKart — Autonomous Navigation Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #f0f4f8;
+  --bg2:      #e8edf5;
+  --bg3:      #dde4ef;
+  --panel:    #ffffff;
+  --border:   rgba(0,0,0,0.08);
+  --border2:  rgba(0,0,0,0.14);
+  --text:     #111827;
+  --text2:    #4b5563;
+  --text3:    #9ca3af;
+  --accent:   #2563eb;
+  --accent2:  #7c3aed;
+  --green:    #059669;
+  --greenlt:  #d1fae5;
+  --amber:    #d97706;
+  --amberlt:  #fef3c7;
+  --red:      #dc2626;
+  --redlt:    #fee2e2;
+  --orange:   #ea580c;
+  --orangelt: #ffedd5;
+  --teal:     #0d9488;
+  --accentlt: #dbeafe;
+  --hd:   'Rajdhani', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --body: 'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  height: 52px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center;
+  padding: 0 20px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.topbar-brand {
+  display: flex; align-items: center; gap: 10px;
+  margin-right: 28px;
+}
+
+.brand-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--hd); font-size: 14px; font-weight: 700;
+  color: white; letter-spacing: 1px;
+}
+
+.brand-text {
+  font-family: var(--hd);
+  font-size: 17px; font-weight: 700;
+  letter-spacing: 1px; color: var(--text);
+}
+.brand-text span { color: var(--accent); }
+
+.topbar-tabs { display: flex; height: 100%; margin-right: auto; }
+
+.tab {
+  padding: 0 18px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500;
+  font-family: var(--mono);
+  color: var(--text2);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s;
+  letter-spacing: 0.4px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab .tdot { width: 6px; height: 6px; border-radius: 50%; }
+
+.topbar-right { display: flex; align-items: center; gap: 14px; }
+
+.clock {
+  font-family: var(--mono); font-size: 13px;
+  color: var(--text2); letter-spacing: 1px;
+}
+
+.conn-status {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--green);
+}
+.conn-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(5,150,105,0.5);
+  animation: blink 2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.btn-emergency {
+  padding: 6px 14px;
+  background: var(--redlt);
+  border: 1px solid rgba(220,38,38,0.35);
+  border-radius: 6px;
+  color: var(--red);
+  font-family: var(--hd); font-size: 13px; font-weight: 600;
+  letter-spacing: 1px; cursor: pointer; transition: all 0.18s;
+}
+.btn-emergency:hover { background: #fecaca; }
+
+/* ── MAIN LAYOUT ── */
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 268px 1fr 284px;
+  overflow: hidden;
+}
+
+/* ── PANELS ── */
+.panel {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.panel-right { border-right: none; border-left: 1px solid var(--border); }
+
+.panel-header {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; background: var(--bg2);
+}
+
+.panel-title {
+  font-family: var(--hd);
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 1.8px; text-transform: uppercase;
+  color: var(--text2);
+}
+
+.panel-tag {
+  font-family: var(--mono); font-size: 10px;
+  padding: 2px 7px; border-radius: 4px;
+  background: var(--accentlt); color: var(--accent);
+  border: 1px solid rgba(37,99,235,0.2);
+}
+
+.panel-body { flex: 1; overflow-y: auto; padding: 14px; }
+.panel-body::-webkit-scrollbar { width: 3px; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── STATE DISPLAY ── */
+.state-display {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.state-label {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--text3); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+
+.state-value {
+  font-family: var(--hd); font-size: 22px; font-weight: 700;
+  letter-spacing: 1px;
+}
+.state-value.navigating { color: var(--green); }
+.state-value.idle       { color: var(--accent); }
+.state-value.planning   { color: var(--amber); }
+.state-value.stopped    { color: var(--red); }
+.state-value.manual     { color: var(--orange); }
+
+.state-sub {
+  font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 3px;
+}
+
+/* State flow */
+.state-flow { display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px; }
+
+.sf-node {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  font-family: var(--mono); font-size: 10px; color: var(--text3);
+  transition: all 0.3s;
+}
+.sf-node.active {
+  border-color: rgba(5,150,105,0.4);
+  background: var(--greenlt);
+  color: var(--green);
+  font-weight: 600;
+}
+.sf-node.done {
+  border-color: rgba(37,99,235,0.2);
+  color: var(--accent);
+  background: var(--accentlt);
+}
+.sf-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.sf-node.active .sf-dot { background: var(--green); }
+.sf-node.done .sf-dot   { background: var(--accent); }
+.sf-arrow { padding-left: 18px; font-family: var(--mono); font-size: 10px; color: var(--text3); }
+
+/* Destination card */
+.dest-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;
+}
+.dest-card label {
+  font-family: var(--mono); font-size: 10px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px;
+}
+.dest-card select {
+  width: 100%; padding: 7px 10px;
+  background: var(--panel); border: 1px solid var(--border2);
+  border-radius: 6px; color: var(--text);
+  font-family: var(--mono); font-size: 11px;
+  appearance: none; cursor: pointer; margin-bottom: 9px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+}
+.dest-card select:focus { outline: none; border-color: var(--accent); }
+
+.btn-nav {
+  width: 100%; padding: 9px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  border: none; border-radius: 7px;
+  color: white; font-family: var(--hd);
+  font-size: 14px; font-weight: 600; letter-spacing: 1px;
+  cursor: pointer; transition: all 0.18s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-nav:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(37,99,235,0.25); }
+.btn-nav:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-stop {
+  width: 100%; padding: 8px; margin-top: 6px;
+  background: var(--redlt); border: 1px solid rgba(220,38,38,0.3);
+  border-radius: 7px; color: var(--red);
+  font-family: var(--hd); font-size: 13px; font-weight: 600; letter-spacing: 1px;
+  cursor: pointer; transition: all 0.18s;
+}
+.btn-stop:hover { background: #fecaca; }
+.btn-stop:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-manual {
+  width: 100%; padding: 8px; margin-top: 6px;
+  background: var(--orangelt); border: 1px solid rgba(234,88,12,0.3);
+  border-radius: 7px; color: var(--orange);
+  font-family: var(--hd); font-size: 13px; font-weight: 600; letter-spacing: 1px;
+  cursor: pointer; transition: all 0.18s;
+}
+.btn-manual:hover { background: #fed7aa; }
+
+/* Metrics */
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+
+.metric-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 11px;
+}
+.metric-card .m-label {
+  font-family: var(--mono); font-size: 10px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px;
+}
+.metric-card .m-val { font-family: var(--hd); font-size: 20px; font-weight: 700; }
+.metric-card .m-unit { font-size: 11px; font-family: var(--mono); color: var(--text2); margin-left: 2px; }
+
+/* Section headers */
+.sec-hdr {
+  font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--text3); margin: 13px 0 7px;
+  padding-bottom: 5px; border-bottom: 1px solid var(--border);
+}
+.sec-hdr:first-child { margin-top: 0; }
+
+/* Progress bar */
+.prog-bar { height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.prog-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+/* ── CENTER ── */
+.center-panel { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.map-area { flex: 1; position: relative; overflow: hidden; }
+#mapCanvas { width: 100%; height: 100%; display: block; }
+
+.map-overlay-tl {
+  position: absolute; top: 10px; left: 10px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.map-badge {
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--accent); backdrop-filter: blur(4px);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.map-badge.status-nav  { color: var(--green); }
+.map-badge.status-stop { color: var(--red); }
+.map-badge.status-plan { color: var(--amber); }
+.map-badge.status-man  { color: var(--orange); }
+
+.map-overlay-br {
+  position: absolute; bottom: 10px; right: 10px;
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+}
+.legend-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 8px;
+  background: rgba(255,255,255,0.9); border-radius: 4px;
+  font-family: var(--mono); font-size: 10px; color: var(--text2);
+  border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Bottom strip */
+.bottom-strip {
+  height: 108px;
+  border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(5,1fr);
+  background: var(--panel); flex-shrink: 0;
+  box-shadow: 0 -1px 4px rgba(0,0,0,0.04);
+}
+.strip-cell {
+  padding: 10px 14px; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.strip-cell:last-child { border-right: none; }
+.strip-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); }
+.strip-value { font-family: var(--hd); font-size: 28px; font-weight: 700; line-height: 1; }
+.strip-sub   { font-family: var(--mono); font-size: 10px; color: var(--text2); }
+
+/* ── RIGHT PANEL ── */
+.sensor-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 9px; border-radius: 7px;
+  background: var(--bg2); border: 1px solid var(--border); margin-bottom: 5px;
+}
+.sensor-left { display: flex; align-items: center; gap: 8px; }
+.sensor-icon {
+  width: 27px; height: 27px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.sensor-name { font-family: var(--mono); font-size: 11px; color: var(--text); }
+.sensor-val  { font-family: var(--mono); font-size: 10px; color: var(--text2); }
+.sensor-status { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 4px; }
+.status-ok   { background: var(--greenlt); color: var(--green); border: 1px solid rgba(5,150,105,0.2); }
+.status-warn { background: var(--amberlt); color: var(--amber); border: 1px solid rgba(217,119,6,0.2); }
+.status-err  { background: var(--redlt);   color: var(--red);   border: 1px solid rgba(220,38,38,0.2); }
+
+/* Log */
+.log-entry {
+  display: flex; gap: 8px; padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px;
+}
+.log-time { color: var(--text3); flex-shrink: 0; width: 52px; }
+.log-type { flex-shrink: 0; width: 42px; }
+.log-msg  { color: var(--text2); flex: 1; line-height: 1.4; }
+.log-INFO  { color: var(--accent); }
+.log-WARN  { color: var(--amber); }
+.log-ERROR { color: var(--red); }
+.log-OK    { color: var(--green); }
+
+/* UC */
+.uc-badge { font-family: var(--mono); font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+.uc-active { background: var(--greenlt); color: var(--green); }
+.uc-idle   { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+
+/* Health */
+.health-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.health-label { font-family: var(--mono); font-size: 10px; color: var(--text2); width: 90px; flex-shrink: 0; }
+.health-bar { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.health-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+.health-pct { font-family: var(--mono); font-size: 10px; width: 32px; text-align: right; }
+
+/* Alert */
+.alert-banner {
+  margin-bottom: 8px; padding: 8px 11px;
+  border-radius: 7px; display: flex; align-items: flex-start; gap: 8px;
+  font-family: var(--mono); font-size: 11px;
+}
+.alert-info { background: var(--accentlt); border: 1px solid rgba(37,99,235,0.2); color: var(--accent); }
+.alert-warn { background: var(--amberlt);  border: 1px solid rgba(217,119,6,0.25);  color: var(--amber); }
+.alert-ok   { background: var(--greenlt);  border: 1px solid rgba(5,150,105,0.2);  color: var(--green); }
+.alert-error{ background: var(--redlt);    border: 1px solid rgba(220,38,38,0.2);  color: var(--red); }
+
+.alert-close {
+  margin-left: auto; cursor: pointer; color: var(--text3);
+  font-size: 13px; line-height: 1; flex-shrink: 0;
+  padding: 0 2px;
+}
+
+/* R-panel tabs */
+.rpanel-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg2); }
+.rtab {
+  flex: 1; padding: 8px 4px; text-align: center;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text3); cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all 0.18s;
+}
+.rtab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--panel); }
+.rtab:hover  { color: var(--text2); }
+
+/* Notif badge */
+.notif-badge {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--red); color: white;
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; margin-left: 4px;
+}
+.notif-badge.hidden { display: none; }
+
+/* Tab content */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1000; display: none;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(3px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--panel);
+  border: 1px solid rgba(220,38,38,0.3);
+  border-radius: 14px; padding: 28px 32px; width: 380px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15); text-align: center;
+}
+.modal-icon { font-size: 38px; margin-bottom: 10px; }
+.modal h2 { font-family: var(--hd); font-size: 22px; font-weight: 700; color: var(--red); letter-spacing: 1px; margin-bottom: 8px; }
+.modal p  { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+.modal-btns { display: flex; gap: 10px; justify-content: center; }
+.modal-btn {
+  padding: 9px 22px; border-radius: 7px;
+  font-family: var(--hd); font-size: 14px; font-weight: 600; letter-spacing: 0.5px;
+  cursor: pointer; border: 1px solid; transition: all 0.18s;
+}
+.modal-btn-confirm { background: var(--red); border-color: var(--red); color: white; }
+.modal-btn-confirm:hover { background: #b91c1c; }
+.modal-btn-cancel  { background: transparent; border-color: var(--border2); color: var(--text2); }
+.modal-btn-cancel:hover { background: var(--bg2); }
+
+/* Proximity canvas */
+#proximityCanvas { border-radius: 6px; display: block; width: 100%; }
+</style>
+</head>
+<body>
+
+<!-- EMERGENCY MODAL -->
+<div class="modal-overlay" id="emergencyModal">
+  <div class="modal">
+    <div class="modal-icon">⚠️</div>
+    <h2>EMERGENCY STOP</h2>
+    <p>This will immediately halt the autonomous kart and disengage all drive systems. Confirm to proceed.</p>
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-confirm" onclick="confirmEmergency()">CONFIRM STOP</button>
+      <button class="modal-btn modal-btn-cancel"  onclick="closeModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">EK</div>
+    <div class="brand-text">Alliance <span>EKart</span></div>
+  </div>
+
+  <div class="topbar-tabs">
+    <div class="tab active" onclick="switchTab(this,'dashboard')">
+      <div class="tdot" style="background:var(--green)"></div>DASHBOARD
+    </div>
+    <div class="tab" onclick="switchTab(this,'usecases')">
+      <div class="tdot" style="background:var(--accent2)"></div>USE CASES
+    </div>
+    <div class="tab" onclick="switchTab(this,'systemlog')">
+      <div class="tdot" style="background:var(--amber)"></div>SYSTEM LOG
+      <div class="notif-badge hidden" id="logBadge">0</div>
+    </div>
+    <div class="tab" onclick="switchTab(this,'health')">
+      <div class="tdot" style="background:var(--teal)"></div>HEALTH
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="conn-status"><div class="conn-dot"></div>CONNECTED</div>
+    <button class="btn-emergency" onclick="openModal()">⛔ E-STOP</button>
+  </div>
+</header>
+
+<!-- MAIN LAYOUT -->
+<div class="layout">
+
+  <!-- ══ LEFT PANEL ══ -->
+  <aside class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Vehicle Control</span>
+      <span class="panel-tag">UC1–UC5</span>
+    </div>
+    <div class="panel-body">
+
+      <div class="sec-hdr">System State</div>
+      <div class="state-display">
+        <div class="state-label">Current State</div>
+        <div class="state-value idle" id="stateValue">IDLE</div>
+        <div class="state-sub" id="stateSub">Awaiting destination input</div>
+      </div>
+
+      <div class="state-flow" id="stateFlow">
+        <div class="sf-node done"><span class="sf-dot"></span>INITIALIZATION</div>
+        <div class="sf-arrow">↓ ALL CHECKS OK</div>
+        <div class="sf-node active"><span class="sf-dot"></span>IDLE (Standby)</div>
+        <div class="sf-arrow">↓ A* COMPUTED</div>
+        <div class="sf-node"><span class="sf-dot"></span>PLANNING A*</div>
+        <div class="sf-arrow">↓ PATH FOUND</div>
+        <div class="sf-node"><span class="sf-dot"></span>NAVIGATING</div>
+      </div>
+
+      <div class="sec-hdr">Set Destination (UC1)</div>
+      <div class="dest-card">
+        <label>Current Location</label>
+        <select id="fromNode" onchange="onRouteChange()">
+          <option value="Entrance">Entrance</option>
+          <option value="Admin block">Admin Block</option>
+          <option value="Library" selected>Library</option>
+          <option value="Engineering block">Engineering Block</option>
+          <option value="Auditorium">Auditorium</option>
+          <option value="Business block">Business Block</option>
+          <option value="Activity centre">Activity Centre</option>
+          <option value="Law block">Law Block</option>
+          <option value="Food court">Food Court</option>
+          <option value="Department store">Department Store</option>
+        </select>
+        <label>Destination (UC1)</label>
+        <select id="toNode" onchange="onRouteChange()">
+          <option value="Entrance">Entrance</option>
+          <option value="Admin block">Admin Block</option>
+          <option value="Library">Library</option>
+          <option value="Engineering block">Engineering Block</option>
+          <option value="Auditorium" selected>Auditorium</option>
+          <option value="Business block">Business Block</option>
+          <option value="Activity centre">Activity Centre</option>
+          <option value="Law block">Law Block</option>
+          <option value="Food court">Food Court</option>
+          <option value="Department store">Department Store</option>
+        </select>
+        <button class="btn-nav" id="btnNav" onclick="startNavigation()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          START NAVIGATION
+        </button>
+        <button class="btn-stop" id="btnStop" onclick="stopKart()" disabled>⏹ STOP KART</button>
+        <button class="btn-manual" id="btnManual" onclick="setManualMode()">🕹 MANUAL OVERRIDE (UC5)</button>
+      </div>
+
+      <div class="sec-hdr">Live Metrics</div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="m-label">Speed</div>
+          <div class="m-val" style="color:var(--green)" id="speedVal">0<span class="m-unit">km/h</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="m-label">Distance Left</div>
+          <div class="m-val" style="color:var(--accent)" id="distVal">—<span class="m-unit">m</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="m-label">Battery</div>
+          <div class="m-val" style="color:var(--amber)" id="battVal">82<span class="m-unit">%</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="m-label">ETA</div>
+          <div class="m-val" style="color:var(--teal)" id="etaVal">—<span class="m-unit"></span></div>
+        </div>
+      </div>
+
+      <div style="padding:0 1px">
+        <div class="prog-bar">
+          <div class="prog-fill" id="battBar" style="width:82%;background:var(--amber)"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">Battery</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--amber)" id="battPct">82%</span>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ══ CENTER PANEL ══ -->
+  <div class="center-panel">
+
+    <!-- DASHBOARD view -->
+    <div id="view-dashboard" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div class="map-area">
+        <canvas id="mapCanvas"></canvas>
+        <div class="map-overlay-tl">
+          <div class="map-badge" id="mapBadge">● LIVE MAP — IDLE</div>
+          <div class="map-badge" style="color:var(--text2)" id="pathBadge">Select a destination to plan route</div>
+        </div>
+        <div class="map-overlay-br">
+          <div class="legend-row"><div class="leg-dot" style="background:var(--green)"></div>Start</div>
+          <div class="legend-row"><div class="leg-dot" style="background:var(--amber)"></div>Goal</div>
+          <div class="legend-row"><div class="leg-dot" style="background:var(--red)"></div>Landmark</div>
+          <div class="legend-row"><div class="leg-dot" style="background:var(--accent)"></div>Node</div>
+          <div class="legend-row"><div class="leg-dot" style="background:var(--accent2)"></div>A* Path</div>
+        </div>
+      </div>
+
+      <div class="bottom-strip">
+        <div class="strip-cell">
+          <div class="strip-label">Speed</div>
+          <div class="strip-value" style="color:var(--green)" id="s-speed">0</div>
+          <div class="strip-sub" id="s-speed-sub">idle</div>
+          <div class="prog-bar"><div class="prog-fill" id="sbar-speed" style="width:0%;background:var(--green)"></div></div>
+        </div>
+        <div class="strip-cell">
+          <div class="strip-label">Obstacles</div>
+          <div class="strip-value" style="color:var(--text3)" id="s-obs">—</div>
+          <div class="strip-sub" id="s-obs-sub">sensors idle</div>
+          <div class="prog-bar"><div class="prog-fill" id="sbar-obs" style="width:0%;background:var(--amber)"></div></div>
+        </div>
+        <div class="strip-cell">
+          <div class="strip-label">Waypoints</div>
+          <div class="strip-value" style="color:var(--accent)" id="s-wp">—</div>
+          <div class="strip-sub" id="s-wp-sub">awaiting route</div>
+          <div class="prog-bar"><div class="prog-fill" id="sbar-wp" style="width:0%;background:var(--accent)"></div></div>
+        </div>
+        <div class="strip-cell">
+          <div class="strip-label">Path Cost</div>
+          <div class="strip-value" style="color:var(--teal)" id="s-cost">—</div>
+          <div class="strip-sub" id="s-cost-sub">not computed</div>
+          <div class="prog-bar"><div class="prog-fill" id="sbar-cost" style="width:0%;background:var(--teal)"></div></div>
+        </div>
+        <div class="strip-cell">
+          <div class="strip-label">Signal</div>
+          <div class="strip-value" style="color:var(--green)" id="s-sig">97</div>
+          <div class="strip-sub">% · strong</div>
+          <div class="prog-bar"><div class="prog-fill" id="sbar-sig" style="width:97%;background:var(--green)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USE CASES view -->
+    <div id="view-usecases" style="flex:1;display:none;overflow-y:auto;padding:20px;background:var(--bg)">
+      <div style="font-family:var(--hd);font-size:22px;font-weight:700;letter-spacing:1px;color:var(--text);margin-bottom:3px">Use Case Overview</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:18px">Autonomous Navigation System — UC1 to UC12</div>
+      <div id="ucGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+    </div>
+
+    <!-- SYSTEM LOG view -->
+    <div id="view-systemlog" style="flex:1;display:none;overflow-y:auto;padding:20px;background:var(--bg)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-family:var(--hd);font-size:22px;font-weight:700;letter-spacing:1px;color:var(--text)">System Event Log</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:2px">UC10 · Real-time journey & event logging</div>
+        </div>
+        <button onclick="clearLog()" style="padding:6px 14px;background:var(--redlt);border:1px solid rgba(220,38,38,0.25);border-radius:6px;color:var(--red);font-family:var(--mono);font-size:11px;cursor:pointer">Clear Log</button>
+      </div>
+      <div id="fullLog"></div>
+    </div>
+
+    <!-- HEALTH view -->
+    <div id="view-health" style="flex:1;display:none;overflow-y:auto;padding:20px;background:var(--bg)">
+      <div style="font-family:var(--hd);font-size:22px;font-weight:700;letter-spacing:1px;color:var(--text);margin-bottom:3px">System Health</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:18px">UC12 · Live component diagnostics — auto-refreshes every 3s</div>
+      <div id="healthView"></div>
+    </div>
+
+  </div>
+
+  <!-- ══ RIGHT PANEL ══ -->
+  <aside class="panel panel-right">
+    <div class="panel-header">
+      <span class="panel-title">Sensors & Alerts</span>
+      <span class="panel-tag">UC7–UC9</span>
+    </div>
+    <div class="rpanel-tabs">
+      <div class="rtab active" onclick="switchRTab(this,'sensors')">Sensors</div>
+      <div class="rtab" onclick="switchRTab(this,'alerts')">Alerts</div>
+      <div class="rtab" onclick="switchRTab(this,'log')">Log</div>
+    </div>
+
+    <!-- SENSORS -->
+    <div class="panel-body tab-content active" id="rtab-sensors">
+      <div class="sec-hdr">Perception Layer (UC7)</div>
+
+      <div class="sensor-row" id="sensor-us">
+        <div class="sensor-left">
+          <div class="sensor-icon" style="background:var(--accentlt)">📡</div>
+          <div>
+            <div class="sensor-name">Ultrasonic</div>
+            <div class="sensor-val" id="usVal">—</div>
+          </div>
+        </div>
+        <span class="sensor-status status-ok" id="usStatus">IDLE</span>
+      </div>
+
+      <div class="sensor-row">
+        <div class="sensor-left">
+          <div class="sensor-icon" style="background:var(--greenlt)">📷</div>
+          <div>
+            <div class="sensor-name">Camera</div>
+            <div class="sensor-val" id="camVal">—</div>
+          </div>
+        </div>
+        <span class="sensor-status status-ok" id="camStatus">IDLE</span>
+      </div>
+
+      <div class="sensor-row">
+        <div class="sensor-left">
+          <div class="sensor-icon" style="background:#ede9fe">🔭</div>
+          <div>
+            <div class="sensor-name">LiDAR</div>
+            <div class="sensor-val" id="lidarVal">—</div>
+          </div>
+        </div>
+        <span class="sensor-status status-ok" id="lidarStatus">IDLE</span>
+      </div>
+
+      <div class="sensor-row">
+        <div class="sensor-left">
+          <div class="sensor-icon" style="background:var(--amberlt)">🧭</div>
+          <div>
+            <div class="sensor-name">IMU / GPS</div>
+            <div class="sensor-val" id="imuVal">—</div>
+          </div>
+        </div>
+        <span class="sensor-status status-ok" id="imuStatus">IDLE</span>
+      </div>
+
+      <div class="sensor-row">
+        <div class="sensor-left">
+          <div class="sensor-icon" style="background:#ccfbf1">⚙️</div>
+          <div>
+            <div class="sensor-name">Motor Ctrl</div>
+            <div class="sensor-val" id="motorVal">—</div>
+          </div>
+        </div>
+        <span class="sensor-status status-ok" id="motorStatus">IDLE</span>
+      </div>
+
+      <div class="sensor-row">
+        <div class="sensor-left">
+          <div class="sensor-icon" style="background:var(--orangelt)">📶</div>
+          <div>
+            <div class="sensor-name">Comms</div>
+            <div class="sensor-val" id="commsVal">RSSI: −42 dBm</div>
+          </div>
+        </div>
+        <span class="sensor-status status-ok">OK</span>
+      </div>
+
+      <div class="sec-hdr" style="margin-top:14px">Obstacle Radar (UC7)</div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+        <canvas id="proximityCanvas" width="220" height="110" style="width:100%"></canvas>
+        <div id="obstacleMsg" style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:5px">Radar inactive</div>
+      </div>
+    </div>
+
+    <!-- ALERTS -->
+    <div class="panel-body tab-content" id="rtab-alerts" style="display:none">
+      <div class="sec-hdr">Active Alerts (UC9)</div>
+      <div id="alertsList"></div>
+      <div class="sec-hdr" style="margin-top:14px">Send Manual Alert</div>
+      <select id="alertType" style="width:100%;padding:7px 9px;background:var(--panel);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:11px;margin-bottom:8px">
+        <option>Obstacle Detected</option>
+        <option>Battery Low</option>
+        <option>Path Blocked</option>
+        <option>System Warning</option>
+        <option>Goal Reached</option>
+        <option>Comms Degraded</option>
+      </select>
+      <button onclick="sendAlert()" style="width:100%;padding:8px;background:var(--accentlt);border:1px solid rgba(37,99,235,0.25);border-radius:6px;color:var(--accent);font-family:var(--hd);font-size:13px;font-weight:600;letter-spacing:1px;cursor:pointer">SEND ALERT</button>
+    </div>
+
+    <!-- LOG (mini) -->
+    <div class="panel-body tab-content" id="rtab-log" style="display:none">
+      <div class="sec-hdr">Recent Events</div>
+      <div id="miniLog"></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// GRAPH DATA
+// ═══════════════════════════════════════════════════
+const NODES = {
+  'Entrance':         {x:0.09,y:0.14,label:'Entrance',       landmark:true},
+  'Admin block':      {x:0.07,y:0.24,label:'Admin block',    landmark:true},
+  'A':                {x:0.21,y:0.19,label:'A',               landmark:false},
+  'Library':          {x:0.31,y:0.24,label:'Library',        landmark:true},
+  'B':                {x:0.31,y:0.30,label:'B',               landmark:false},
+  'C':                {x:0.34,y:0.30,label:'C',               landmark:false},
+  'D':                {x:0.40,y:0.21,label:'D',               landmark:false},
+  'Engineering block':{x:0.35,y:0.12,label:'Eng. Block',     landmark:true},
+  'E':                {x:0.54,y:0.21,label:'E',               landmark:false},
+  'Auditorium':       {x:0.68,y:0.22,label:'Auditorium',     landmark:true},
+  'F':                {x:0.43,y:0.36,label:'F',               landmark:false},
+  'G':                {x:0.53,y:0.33,label:'G',               landmark:false},
+  'Business block':   {x:0.62,y:0.38,label:'Business Blk',  landmark:true},
+  'H':                {x:0.68,y:0.40,label:'H',               landmark:false},
+  'I':                {x:0.69,y:0.50,label:'I',               landmark:false},
+  'Activity centre':  {x:0.53,y:0.50,label:'Activity Ctr',  landmark:true},
+  'Law block':        {x:0.47,y:0.53,label:'Law Block',      landmark:true},
+  'N':                {x:0.47,y:0.60,label:'N',               landmark:false},
+  'O':                {x:0.58,y:0.60,label:'O',               landmark:false},
+  'Food court':       {x:0.54,y:0.65,label:'Food Court',     landmark:true},
+  'Department store': {x:0.68,y:0.62,label:'Dept. Store',   landmark:true},
+  'M':                {x:0.47,y:0.71,label:'M',               landmark:false},
+  'L':                {x:0.57,y:0.71,label:'L',               landmark:false},
+  'K':                {x:0.57,y:0.82,label:'K',               landmark:false},
+  'J':                {x:0.65,y:0.82,label:'J',               landmark:false},
+};
+
+const EDGES = [
+  ['Entrance','A',101],['Admin block','A',58],['A','Library',96],
+  ['Library','B',36],['B','C',32],['B','F',88],
+  ['C','D',61],['D','Engineering block',50],['D','E',91],
+  ['E','Auditorium',96],['F','G',75],['G','Business block',62],
+  ['Business block','H',56],['H','I',117],['I','Activity centre',40],
+  ['Activity centre','Law block',35],['Law block','N',25],
+  ['N','O',75],['N','M',110],['O','Department store',43],['O','Food court',32],
+  ['M','L',80],['L','K',70],['K','J',60],
+  ['F','Law block',95],['G','Auditorium',120],['Department store','J',85],['I','Department store',80],
+];
+
+const adj = {};
+Object.keys(NODES).forEach(n => adj[n] = []);
+EDGES.forEach(([a,b,w]) => { adj[a].push({to:b,w}); adj[b].push({to:a,w}); });
+
+// ═══════════════════════════════════════════════════
+// A*
+// ═══════════════════════════════════════════════════
+function astar(start, end) {
+  if(start === end) return {path:[start], dist:0};
+  const dist={}, prev={}, fScore={};
+  Object.keys(NODES).forEach(n => { dist[n]=Infinity; fScore[n]=Infinity; });
+  dist[start]=0; fScore[start]=heur(start,end);
+  const open=new Set([start]), closed=new Set();
+  while(open.size) {
+    let cur=null;
+    open.forEach(n => { if(!cur||fScore[n]<fScore[cur]) cur=n; });
+    if(cur===end) break;
+    open.delete(cur); closed.add(cur);
+    (adj[cur]||[]).forEach(({to,w}) => {
+      if(closed.has(to)) return;
+      const t=dist[cur]+w;
+      if(t<dist[to]) { dist[to]=t; fScore[to]=t+heur(to,end); prev[to]=cur; open.add(to); }
+    });
+  }
+  const path=[]; let c=end;
+  while(c){ path.unshift(c); c=prev[c]; }
+  if(path[0]!==start) return {path:[],dist:Infinity};
+  return {path, dist:dist[end]};
+}
+
+function heur(a,b) {
+  const na=NODES[a], nb=NODES[b];
+  if(!na||!nb) return 0;
+  return Math.hypot(na.x-nb.x, na.y-nb.y)*1000;
+}
+
+// ═══════════════════════════════════════════════════
+// APPLICATION STATE
+// ═══════════════════════════════════════════════════
+const appState = {
+  mode: 'IDLE',       // IDLE | PLANNING | NAVIGATING | STOPPED | MANUAL
+  from: 'Library',
+  to: 'Auditorium',
+  path: [],
+  dist: 0,
+  kartT: 0,
+  kartSeg: 0,
+  waypoints: 0,
+  wpDone: 0,
+  battery: 82,
+  batteryDrain: 0,     // drains only when navigating
+  speed: 0,            // 0 when not navigating
+  targetSpeed: 0,
+  obstacles: 0,
+  obstacleTimer: 0,
+  signal: 97,
+  cpu: 18,
+  ram: 42,
+  temp: 36,
+  motorPWM: 0,
+  tripDistance: 0,
+  totalJourneys: 0,
+  lastGoalReached: null,
+};
+
+// health dynamic values — updated live
+const healthMetrics = {
+  cpu: 18, ram: 42, temp: 36,
+  motorHealth: 100, sensorHealth: 100, commsHealth: 95,
+  batteryHealth: 100, pathLoggerHealth: 100, astarHealth: 100,
+};
+
+// ═══════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════
+function nowStr() {
+  const d=new Date();
+  return d.getHours().toString().padStart(2,'0')+':'+
+         d.getMinutes().toString().padStart(2,'0')+':'+
+         d.getSeconds().toString().padStart(2,'0');
+}
+function updateClock() { document.getElementById('clock').textContent=nowStr(); }
+setInterval(updateClock,1000); updateClock();
+
+// ═══════════════════════════════════════════════════
+// LOGGING — always real-time
+// ═══════════════════════════════════════════════════
+const logEntries = [];
+
+function addLog(type, msg) {
+  logEntries.unshift({time:nowStr(), type, msg});
+  if(logEntries.length>100) logEntries.pop();
+
+  // bump badge only if not on log tab
+  const activeTabEl = document.querySelector('.tab.active');
+  if(activeTabEl && !activeTabEl.textContent.includes('LOG')) {
+    const b = document.getElementById('logBadge');
+    b.classList.remove('hidden');
+    b.textContent = Math.min(99, parseInt(b.textContent||0)+1);
+  }
+
+  // always re-render mini log (right panel)
+  renderMiniLog();
+  // if system log tab is open, refresh it live
+  if(document.getElementById('view-systemlog').style.display==='block') {
+    renderFullLog();
+  }
+}
+
+function renderMiniLog() {
+  const ml = document.getElementById('miniLog');
+  if(!ml) return;
+  ml.innerHTML = logEntries.slice(0,14).map(e=>`
+    <div class="log-entry">
+      <span class="log-time">${e.time}</span>
+      <span class="log-type log-${e.type}">${e.type}</span>
+      <span class="log-msg">${e.msg}</span>
+    </div>`).join('');
+}
+
+function renderFullLog() {
+  const fl=document.getElementById('fullLog');
+  if(!fl) return;
+  fl.innerHTML = logEntries.map(e=>`
+    <div style="display:flex;gap:12px;padding:8px 12px;border-radius:7px;
+         background:var(--panel);border:1px solid var(--border);
+         font-family:var(--mono);font-size:11px;margin-bottom:5px;align-items:flex-start">
+      <span style="color:var(--text3);flex-shrink:0;width:60px">${e.time}</span>
+      <span class="log-type log-${e.type}" style="flex-shrink:0;width:46px">${e.type}</span>
+      <span style="color:var(--text2)">${e.msg}</span>
+    </div>`).join('');
+}
+
+function clearLog() {
+  logEntries.length=0;
+  renderFullLog();
+  renderMiniLog();
+  addLog('INFO','Log cleared by operator');
+}
+
+// ═══════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════
+const activeAlerts = [];
+
+function pushAlert(type, msg) {
+  activeAlerts.unshift({id: Date.now(), type, msg, time: nowStr()});
+  if(activeAlerts.length>10) activeAlerts.pop();
+  renderAlerts();
+}
+
+function dismissAlert(id) {
+  const idx = activeAlerts.findIndex(a=>a.id===id);
+  if(idx>=0) activeAlerts.splice(idx,1);
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const al=document.getElementById('alertsList');
+  if(!al) return;
+  if(activeAlerts.length===0) {
+    al.innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--text3);padding:8px 0">No active alerts</div>';
+    return;
+  }
+  al.innerHTML=activeAlerts.map(a=>`
+    <div class="alert-banner alert-${a.type}">
+      <span style="flex-shrink:0">${a.type==='info'?'ℹ':a.type==='warn'?'⚠':a.type==='error'?'✕':'✓'}</span>
+      <div style="flex:1"><div>${a.msg}</div><div style="font-size:9px;margin-top:2px;opacity:0.7">${a.time}</div></div>
+      <span class="alert-close" onclick="dismissAlert(${a.id})">✕</span>
+    </div>`).join('');
+}
+
+function sendAlert() {
+  const type = document.getElementById('alertType').value;
+  pushAlert('warn', type);
+  addLog('WARN', 'Manual alert: '+type);
+}
+
+// ═══════════════════════════════════════════════════
+// STATE MACHINE
+// ═══════════════════════════════════════════════════
+function setState(s) {
+  const prev = appState.mode;
+  appState.mode = s;
+
+  const sv = document.getElementById('stateValue');
+  sv.className = 'state-value';
+  const cls = {NAVIGATING:'navigating',IDLE:'idle',PLANNING:'planning',STOPPED:'stopped',MANUAL:'manual',ERROR:'stopped'};
+  sv.classList.add(cls[s]||'idle');
+  const lbl = {NAVIGATING:'NAVIGATING',IDLE:'IDLE',PLANNING:'PLANNING…',STOPPED:'STOPPED',MANUAL:'MANUAL CTRL'};
+  sv.textContent = lbl[s]||s;
+
+  const subs = {
+    IDLE:'Awaiting destination input',
+    PLANNING:'Computing A* optimal path…',
+    NAVIGATING:'Moving along waypoints',
+    STOPPED:'Kart halted',
+    MANUAL:'Human operator in control',
+  };
+  document.getElementById('stateSub').textContent = subs[s]||'';
+
+  // update state flow highlight
+  const flows = document.querySelectorAll('.sf-node');
+  flows.forEach(f=>f.classList.remove('active','done'));
+  const ai = {IDLE:1,PLANNING:2,NAVIGATING:3,STOPPED:3,MANUAL:3}[s]||0;
+  flows.forEach((f,i)=>{
+    if(i<ai) f.classList.add('done');
+    else if(i===ai) f.classList.add('active');
+  });
+
+  // update map badge class
+  const mb = document.getElementById('mapBadge');
+  mb.className='map-badge';
+  const badgeStates = {
+    IDLE:     {cls:'',       txt:'● LIVE MAP — IDLE'},
+    PLANNING: {cls:'status-plan', txt:'◌ COMPUTING ROUTE…'},
+    NAVIGATING:{cls:'status-nav',  txt:'▶ LIVE MAP — NAVIGATING'},
+    STOPPED:  {cls:'status-stop', txt:'■ MAP — KART STOPPED'},
+    MANUAL:   {cls:'status-man',  txt:'🕹 MAP — MANUAL MODE'},
+  };
+  const bs = badgeStates[s]||badgeStates.IDLE;
+  if(bs.cls) mb.classList.add(bs.cls);
+  mb.textContent = bs.txt;
+
+  // buttons enable/disable logically
+  document.getElementById('btnNav').disabled   = (s==='NAVIGATING'||s==='PLANNING');
+  document.getElementById('btnStop').disabled  = (s==='IDLE'||s==='STOPPED');
+
+  // speed: zero when not navigating
+  if(s!=='NAVIGATING') {
+    appState.targetSpeed = 0;
+  }
+
+  // sensors: active only when navigating or manual
+  updateSensorState(s==='NAVIGATING'||s==='MANUAL');
+
+  // health: CPU/motor spike when navigating
+  if(s==='NAVIGATING') {
+    healthMetrics.cpu = 55 + Math.floor(Math.random()*20);
+    healthMetrics.temp = 52 + Math.floor(Math.random()*12);
+    healthMetrics.motorHealth = 88 + Math.floor(Math.random()*8);
+  } else if(s==='IDLE'||s==='STOPPED') {
+    healthMetrics.cpu = 12 + Math.floor(Math.random()*10);
+    healthMetrics.temp = 34 + Math.floor(Math.random()*6);
+    healthMetrics.motorHealth = 98;
+  }
+
+  // UC status update
+  USE_CASES.forEach(uc => {
+    if(uc.id==='UC2') uc.status = (s==='NAVIGATING')?'active':'idle';
+    if(uc.id==='UC5') uc.status = (s==='MANUAL')?'active':'idle';
+    if(uc.id==='UC8') uc.status = (s==='STOPPED')?'active':'idle';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// SENSORS — activate/deactivate based on vehicle state
+// ═══════════════════════════════════════════════════
+function updateSensorState(active) {
+  const sensors = [
+    {id:'usStatus', name:'usVal', activeLabel:'OK', idleLabel:'IDLE'},
+    {id:'camStatus', name:'camVal', activeLabel:'OK', idleLabel:'IDLE'},
+    {id:'lidarStatus', name:'lidarVal', activeLabel:'OK', idleLabel:'IDLE'},
+    {id:'imuStatus', name:'imuVal', activeLabel:'OK', idleLabel:'IDLE'},
+    {id:'motorStatus', name:'motorVal', activeLabel:'OK', idleLabel:'IDLE'},
+  ];
+  sensors.forEach(s => {
+    const el = document.getElementById(s.id);
+    if(el) {
+      el.className = 'sensor-status ' + (active ? 'status-ok' : 'status-warn');
+      el.textContent = active ? s.activeLabel : s.idleLabel;
+    }
+  });
+
+  if(!active) {
+    document.getElementById('usVal').textContent    = '—';
+    document.getElementById('camVal').textContent   = '—';
+    document.getElementById('lidarVal').textContent = '—';
+    document.getElementById('imuVal').textContent   = '—';
+    document.getElementById('motorVal').textContent = '—';
+    document.getElementById('obstacleMsg').textContent = 'Radar inactive';
+    document.getElementById('obstacleMsg').style.color = 'var(--text3)';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION CONTROLS
+// ═══════════════════════════════════════════════════
+function onRouteChange() {
+  // preview path when dropdowns change (only if idle/stopped)
+  if(appState.mode==='IDLE'||appState.mode==='STOPPED') {
+    const from = document.getElementById('fromNode').value;
+    const to   = document.getElementById('toNode').value;
+    if(from!==to) {
+      const r = astar(from, to);
+      appState.path = r.path;
+      appState.dist = r.dist;
+      appState.from = from; appState.to = to;
+      document.getElementById('pathBadge').textContent =
+        'Preview: '+NODES[from].label+' → '+NODES[to].label+' ('+r.dist+'m)';
+      document.getElementById('s-cost').textContent = r.dist;
+      document.getElementById('s-cost-sub').textContent = 'preview · not started';
+      document.getElementById('sbar-cost').style.width='60%';
+    }
+  }
+}
+
+function startNavigation() {
+  const from = document.getElementById('fromNode').value;
+  const to   = document.getElementById('toNode').value;
+  if(from===to) { pushAlert('warn','Start and destination must be different'); return; }
+
+  appState.from=from; appState.to=to;
+  setState('PLANNING');
+  addLog('INFO','Planning A* path: '+NODES[from].label+' → '+NODES[to].label);
+  document.getElementById('pathBadge').textContent = 'Computing route…';
+
+  setTimeout(()=>{
+    const r = astar(from, to);
+    if(r.dist===Infinity) {
+      addLog('ERROR','No path found between nodes');
+      pushAlert('error','No path found between selected nodes');
+      setState('IDLE'); return;
+    }
+    appState.path=r.path; appState.dist=r.dist;
+    appState.kartSeg=0; appState.kartT=0;
+    appState.waypoints=r.path.length; appState.wpDone=0;
+    appState.targetSpeed = 8 + Math.floor(Math.random()*8);
+    appState.tripDistance = 0;
+    appState.totalJourneys++;
+
+    document.getElementById('pathBadge').textContent =
+      'Route: '+NODES[from].label+' → '+NODES[to].label+' ('+r.dist+'m)';
+    document.getElementById('s-cost').textContent = r.dist;
+    document.getElementById('s-cost-sub').textContent = 'meters · optimal';
+    document.getElementById('sbar-cost').style.width='100%';
+    document.getElementById('distVal').querySelector('.m-val,.m-unit') ;
+    setDistVal(r.dist);
+
+    setState('NAVIGATING');
+    addLog('OK','Path computed · '+r.path.length+' waypoints · '+r.dist+'m');
+    addLog('INFO','Navigation started');
+    pushAlert('info','Navigation active · '+r.path.length+' waypoints');
+  }, 900);
+}
+
+function stopKart() {
+  if(appState.mode!=='NAVIGATING'&&appState.mode!=='MANUAL') return;
+  setState('STOPPED');
+  appState.targetSpeed=0; appState.speed=0;
+  updateSpeedDisplay(0);
+  addLog('WARN','Kart stopped by operator (UC5)');
+  pushAlert('warn','Kart manually stopped');
+}
+
+function setManualMode() {
+  if(appState.mode==='MANUAL') {
+    // toggle back to idle
+    setState('IDLE');
+    addLog('INFO','Manual mode disengaged — returning to IDLE');
+    document.getElementById('btnManual').textContent='🕹 MANUAL OVERRIDE (UC5)';
+  } else {
+    setState('MANUAL');
+    addLog('WARN','Manual override engaged (UC5) — human control active');
+    pushAlert('warn','Manual override active — autonomous systems paused');
+    document.getElementById('btnManual').textContent='🔄 RETURN TO AUTO';
+  }
+}
+
+function setDistVal(v) {
+  document.getElementById('distVal').innerHTML =
+    '<span class="m-val" style="color:var(--accent)">'+v+'</span><span class="m-unit">m</span>';
+}
+
+function setETA(dist, speed) {
+  if(!speed||speed===0||!dist) {
+    document.getElementById('etaVal').innerHTML='—<span class="m-unit"></span>'; return;
+  }
+  const secs = Math.round(dist / (speed/3.6));
+  const m = Math.floor(secs/60), s = secs%60;
+  document.getElementById('etaVal').innerHTML =
+    '<span class="m-val" style="color:var(--teal)">'+m+'</span><span class="m-unit">:'+s.toString().padStart(2,'0')+'</span>';
+}
+
+// ═══════════════════════════════════════════════════
+// EMERGENCY STOP
+// ═══════════════════════════════════════════════════
+function openModal()  { document.getElementById('emergencyModal').classList.add('open'); }
+function closeModal() { document.getElementById('emergencyModal').classList.remove('open'); }
+function confirmEmergency() {
+  closeModal();
+  appState.path=[]; appState.speed=0; appState.targetSpeed=0;
+  setState('STOPPED');
+  updateSpeedDisplay(0);
+  document.getElementById('mapBadge').textContent='⛔ EMERGENCY STOP ACTIVATED';
+  document.getElementById('mapBadge').className='map-badge status-stop';
+  document.getElementById('obstacleMsg').textContent='⛔ EMERGENCY STOP';
+  document.getElementById('obstacleMsg').style.color='var(--red)';
+  addLog('ERROR','EMERGENCY STOP triggered by operator');
+  pushAlert('error','EMERGENCY STOP activated — all systems halted');
+}
+
+// ═══════════════════════════════════════════════════
+// SPEED DISPLAY HELPER
+// ═══════════════════════════════════════════════════
+function updateSpeedDisplay(spd) {
+  const s = Math.round(spd);
+  document.getElementById('speedVal').innerHTML =
+    '<span class="m-val" style="color:var(--green)">'+s+'</span><span class="m-unit">km/h</span>';
+  document.getElementById('s-speed').textContent = s;
+  document.getElementById('s-speed-sub').textContent = s>0 ? 'km/h · cruising' : 'idle';
+  document.getElementById('sbar-speed').style.width = Math.min(s/25*100,100)+'%';
+}
+
+// ═══════════════════════════════════════════════════
+// CANVAS MAP
+// ═══════════════════════════════════════════════════
+const mapCanvas = document.getElementById('mapCanvas');
+const mctx = mapCanvas.getContext('2d');
+let mapW=0, mapH=0;
+
+function resizeMap() {
+  const area = document.querySelector('.map-area');
+  mapW=area.clientWidth; mapH=area.clientHeight;
+  mapCanvas.width = mapW*devicePixelRatio;
+  mapCanvas.height = mapH*devicePixelRatio;
+  mapCanvas.style.width=mapW+'px'; mapCanvas.style.height=mapH+'px';
+  mctx.scale(devicePixelRatio,devicePixelRatio);
+}
+
+function mpx(n) {
+  return {
+    x: NODES[n].x*mapW*0.9 + mapW*0.05,
+    y: NODES[n].y*mapH*0.88 + mapH*0.06
+  };
+}
+
+function isOnPath(a,b) {
+  const p=appState.path;
+  for(let i=0;i<p.length-1;i++)
+    if((p[i]===a&&p[i+1]===b)||(p[i]===b&&p[i+1]===a)) return true;
+  return false;
+}
+
+function drawMap() {
+  if(!mapW||!mapH) return;
+  mctx.clearRect(0,0,mapW,mapH);
+
+  // Light bg
+  mctx.fillStyle='#f8fafc'; mctx.fillRect(0,0,mapW,mapH);
+
+  // Subtle grid
+  mctx.strokeStyle='rgba(37,99,235,0.06)'; mctx.lineWidth=0.5;
+  for(let x=0;x<mapW;x+=40){ mctx.beginPath();mctx.moveTo(x,0);mctx.lineTo(x,mapH);mctx.stroke(); }
+  for(let y=0;y<mapH;y+=40){ mctx.beginPath();mctx.moveTo(0,y);mctx.lineTo(mapW,y);mctx.stroke(); }
+
+  // Edges
+  EDGES.forEach(([a,b,w]) => {
+    const pa=mpx(a), pb=mpx(b), op=isOnPath(a,b);
+    if(op) {
+      mctx.beginPath(); mctx.moveTo(pa.x,pa.y); mctx.lineTo(pb.x,pb.y);
+      mctx.strokeStyle='rgba(124,58,237,0.18)'; mctx.lineWidth=7; mctx.stroke();
+      mctx.beginPath(); mctx.moveTo(pa.x,pa.y); mctx.lineTo(pb.x,pb.y);
+      mctx.strokeStyle='#7c3aed'; mctx.lineWidth=2.5; mctx.stroke();
+      // weight label
+      const mx=(pa.x+pb.x)/2, my=(pa.y+pb.y)/2;
+      mctx.font='500 9.5px "JetBrains Mono",monospace';
+      mctx.textAlign='center'; mctx.textBaseline='middle';
+      const tw=mctx.measureText(w+'m').width;
+      mctx.fillStyle='rgba(255,255,255,0.9)';
+      mctx.fillRect(mx-tw/2-3,my-7,tw+6,13);
+      mctx.fillStyle='#5b21b6';
+      mctx.fillText(w+'m',mx,my+1);
+    } else {
+      mctx.beginPath(); mctx.moveTo(pa.x,pa.y); mctx.lineTo(pb.x,pb.y);
+      mctx.strokeStyle='rgba(0,0,0,0.12)'; mctx.lineWidth=1; mctx.stroke();
+    }
+  });
+
+  // Nodes
+  Object.keys(NODES).forEach(n => {
+    const p=mpx(n);
+    const isS=n===appState.from, isE=n===appState.to;
+    const onP=appState.path.includes(n), isLM=NODES[n].landmark;
+    let color, r2;
+    if(isS)       {color='#059669';r2=9;}
+    else if(isE)  {color='#d97706';r2=9;}
+    else if(onP)  {color='#7c3aed';r2=isLM?7:5;}
+    else if(isLM) {color='#dc2626';r2=6;}
+    else          {color='#2563eb';r2=4;}
+
+    if(isS||isE) {
+      mctx.beginPath(); mctx.arc(p.x,p.y,r2+7,0,Math.PI*2);
+      mctx.fillStyle=isS?'rgba(5,150,105,0.15)':'rgba(217,119,6,0.15)';
+      mctx.fill();
+    }
+
+    mctx.beginPath(); mctx.arc(p.x,p.y,r2,0,Math.PI*2);
+    mctx.fillStyle=color; mctx.fill();
+    mctx.strokeStyle='rgba(255,255,255,0.9)'; mctx.lineWidth=1.5; mctx.stroke();
+    if(r2>=6) {
+      mctx.beginPath(); mctx.arc(p.x,p.y,r2*0.3,0,Math.PI*2);
+      mctx.fillStyle='rgba(255,255,255,0.55)'; mctx.fill();
+    }
+
+    const lbl=NODES[n].label;
+    mctx.font=(isLM||isS||isE?'500 ':'400 ')+(isS||isE?12:isLM?10.5:9.5)+'px "DM Sans",sans-serif';
+    mctx.textAlign='center'; mctx.textBaseline='top';
+    const tw=mctx.measureText(lbl).width, ly=p.y+r2+3;
+    mctx.fillStyle='rgba(255,255,255,0.88)';
+    mctx.fillRect(p.x-tw/2-3,ly-1,tw+6,14);
+    mctx.fillStyle=isS?'#065f46':isE?'#78350f':onP?'#4c1d95':isLM?'#7f1d1d':'#1e3a8a';
+    mctx.fillText(lbl,p.x,ly);
+  });
+
+  // Kart — only draw when navigating or manual
+  if(appState.path.length>=2 && (appState.mode==='NAVIGATING'||appState.mode==='MANUAL')) {
+    const seg=Math.min(appState.kartSeg, appState.path.length-2);
+    const pa=mpx(appState.path[seg]), pb=mpx(appState.path[seg+1]);
+    const t=appState.kartT;
+    const kx=pa.x+(pb.x-pa.x)*t, ky=pa.y+(pb.y-pa.y)*t;
+    const angle=Math.atan2(pb.y-pa.y,pb.x-pa.x);
+    mctx.save(); mctx.translate(kx,ky); mctx.rotate(angle);
+    mctx.shadowColor='rgba(5,150,105,0.4)'; mctx.shadowBlur=12;
+    mctx.beginPath(); mctx.roundRect(-9,-5.5,18,11,3);
+    mctx.fillStyle='#059669'; mctx.fill();
+    mctx.strokeStyle='#065f46'; mctx.lineWidth=1; mctx.stroke();
+    mctx.shadowBlur=0;
+    mctx.fillStyle='#fffbeb'; mctx.fillRect(7,-3.5,3.5,3); mctx.fillRect(7,0.5,3.5,3);
+    mctx.fillStyle='#374151'; mctx.fillRect(-9,-7,5,2.5); mctx.fillRect(-9,4.5,5,2.5);
+    mctx.fillRect(5,-7,5,2.5); mctx.fillRect(5,4.5,5,2.5);
+    mctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// PROXIMITY RADAR
+// ═══════════════════════════════════════════════════
+function drawProximity() {
+  const pc=document.getElementById('proximityCanvas');
+  const pctx=pc.getContext('2d');
+  const W=pc.width, H=pc.height;
+  pctx.clearRect(0,0,W,H);
+
+  const active = appState.mode==='NAVIGATING'||appState.mode==='MANUAL';
+  pctx.fillStyle=active?'#f0fdf4':'#f8fafc';
+  pctx.fillRect(0,0,W,H);
+
+  // rings
+  [0.28,0.52,0.76].forEach(r=>{
+    pctx.beginPath(); pctx.arc(W/2,H/2,r*H/2,0,Math.PI*2);
+    pctx.strokeStyle=active?'rgba(5,150,105,0.2)':'rgba(0,0,0,0.07)';
+    pctx.lineWidth=1; pctx.stroke();
+  });
+
+  if(active) {
+    // sweep
+    const sw=(Date.now()/1000*1.4)%(Math.PI*2);
+    pctx.beginPath(); pctx.moveTo(W/2,H/2);
+    pctx.arc(W/2,H/2,H/2*0.82,sw-0.55,sw);
+    pctx.fillStyle='rgba(5,150,105,0.12)'; pctx.fill();
+    pctx.beginPath(); pctx.moveTo(W/2,H/2);
+    pctx.lineTo(W/2+Math.cos(sw)*H/2*0.82, H/2+Math.sin(sw)*H/2*0.82);
+    pctx.strokeStyle='rgba(5,150,105,0.5)'; pctx.lineWidth=1.5; pctx.stroke();
+
+    // obstacle blips
+    if(appState.obstacles>0) {
+      pctx.beginPath(); pctx.arc(W/2+28,H/2-18,5,0,Math.PI*2);
+      pctx.fillStyle='#dc2626'; pctx.fill();
+    }
+  }
+
+  // center kart dot
+  pctx.beginPath(); pctx.arc(W/2,H/2,5,0,Math.PI*2);
+  pctx.fillStyle=active?'#059669':'#9ca3af'; pctx.fill();
+}
+
+// ═══════════════════════════════════════════════════
+// MAIN ANIMATION LOOP
+// ═══════════════════════════════════════════════════
+let lastTime=0;
+let obstacleTimeout=null;
+
+function animate(ts) {
+  const dt=Math.min((ts-lastTime)/1000, 0.1);
+  lastTime=ts;
+
+  // ── Speed simulation: only when navigating
+  if(appState.mode==='NAVIGATING') {
+    // smooth speed ramp toward target
+    const diff = appState.targetSpeed - appState.speed;
+    appState.speed += diff * Math.min(dt*2, 1);
+    if(Math.abs(diff)<0.1) appState.speed = appState.targetSpeed;
+
+    // kart movement
+    appState.kartT += dt * 0.15;
+    if(appState.kartT>=1) {
+      appState.kartT=0;
+      appState.kartSeg++;
+      if(appState.kartSeg>=appState.path.length-1) {
+        // GOAL REACHED
+        appState.kartSeg=0; appState.kartT=0;
+        appState.wpDone = appState.waypoints;
+        goalReached();
+      } else {
+        appState.wpDone = Math.min(appState.wpDone+1, appState.waypoints);
+        addLog('INFO','Waypoint '+(appState.wpDone)+'/'+appState.waypoints+' reached');
+      }
+    }
+
+    // battery drain only when moving
+    appState.batteryDrain += dt * 0.008;
+    if(appState.batteryDrain>=1) {
+      appState.batteryDrain=0;
+      appState.battery = Math.max(0, appState.battery-1);
+      updateBattery();
+      if(appState.battery===20) {
+        addLog('WARN','Battery low: 20%');
+        pushAlert('warn','Battery low — 20% remaining');
+      }
+      if(appState.battery===5) {
+        addLog('ERROR','Critical battery: 5% — emergency protocols');
+        pushAlert('error','Critical battery — navigation stopping');
+        stopKart();
+      }
+    }
+
+    // occasional random obstacle
+    if(!obstacleTimeout && Math.random()<0.0015) {
+      triggerObstacle();
+    }
+
+    // fluctuate live sensor values
+    if(Math.random()<0.04) {
+      const us=(1.5+Math.random()*4).toFixed(1);
+      document.getElementById('usVal').textContent=us+' m clearance';
+      document.getElementById('usStatus').textContent=parseFloat(us)<1.0?'WARN':'OK';
+      document.getElementById('usStatus').className='sensor-status '+(parseFloat(us)<1.0?'status-warn':'status-ok');
+
+      document.getElementById('camVal').textContent='30 FPS · active';
+      document.getElementById('lidarVal').textContent='360° · '+Math.round(8+Math.random()*4)+' Hz';
+      const hdg=Math.floor(Math.random()*360).toString().padStart(3,'0');
+      document.getElementById('imuVal').textContent='Hdg: '+hdg+'°  '+
+        (1.0+Math.random()*0.3).toFixed(2)+'g';
+      const pwm=Math.floor(45+Math.random()*35);
+      document.getElementById('motorVal').textContent='PWM: '+pwm+'%';
+      appState.motorPWM=pwm;
+
+      // signal slight fluctuation
+      appState.signal = Math.max(60,Math.min(100,appState.signal+(Math.random()-0.5)*3));
+      document.getElementById('s-sig').textContent=Math.round(appState.signal);
+      document.getElementById('sbar-sig').style.width=Math.round(appState.signal)+'%';
+    }
+
+    // update ETA dynamically
+    const remainingDist = Math.round(appState.dist * (1 - appState.wpDone/Math.max(appState.waypoints,1)));
+    setDistVal(remainingDist);
+    setETA(remainingDist, appState.speed);
+
+    updateSpeedDisplay(appState.speed);
+    document.getElementById('s-wp').textContent=appState.wpDone+'/'+appState.waypoints;
+    document.getElementById('sbar-wp').style.width=Math.round(appState.wpDone/Math.max(appState.waypoints,1)*100)+'%';
+    document.getElementById('s-wp-sub').textContent='completed';
+    document.getElementById('s-obs').textContent=appState.obstacles;
+    document.getElementById('s-obs-sub').textContent=appState.obstacles>0?'obstacle!':'path clear';
+    document.getElementById('sbar-obs').style.width=Math.min(appState.obstacles*25,100)+'%';
+
+    // health fluctuates when navigating
+    if(Math.random()<0.02) {
+      healthMetrics.cpu = Math.max(40,Math.min(90, healthMetrics.cpu+(Math.random()-0.48)*5));
+      healthMetrics.ram = Math.max(35,Math.min(80, healthMetrics.ram+(Math.random()-0.5)*3));
+      healthMetrics.temp = Math.max(45,Math.min(70, healthMetrics.temp+(Math.random()-0.45)*2));
+    }
+
+  } else if(appState.mode==='IDLE'||appState.mode==='STOPPED') {
+    // speed stays 0
+    if(appState.speed>0.1) { appState.speed*=0.85; updateSpeedDisplay(appState.speed); }
+    else if(appState.speed>0) { appState.speed=0; updateSpeedDisplay(0); }
+
+    // health slightly fluctuates at rest
+    if(Math.random()<0.005) {
+      healthMetrics.cpu = Math.max(8,Math.min(25, healthMetrics.cpu+(Math.random()-0.5)*4));
+      healthMetrics.ram = Math.max(30,Math.min(50, healthMetrics.ram+(Math.random()-0.5)*2));
+    }
+  }
+
+  // redraw
+  drawMap();
+  drawProximity();
+
+  // refresh health view if open
+  if(document.getElementById('view-health').style.display==='block') {
+    updateHealthView();
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function goalReached() {
+  appState.lastGoalReached = NODES[appState.to].label;
+  setState('IDLE');
+  addLog('OK','Goal reached: '+NODES[appState.to].label);
+  addLog('OK','Journey complete · '+appState.dist+'m · journey #'+appState.totalJourneys);
+  pushAlert('ok','Goal reached: '+NODES[appState.to].label);
+  document.getElementById('obstacleMsg').textContent='Path clear';
+  document.getElementById('obstacleMsg').style.color='var(--green)';
+  document.getElementById('pathBadge').textContent =
+    '✓ Arrived: '+NODES[appState.to].label+' · '+appState.dist+'m completed';
+  document.getElementById('s-wp').textContent=appState.waypoints+'/'+appState.waypoints;
+  document.getElementById('sbar-wp').style.width='100%';
+  setDistVal(0);
+  setETA(0,0);
+
+  // update from node to destination
+  document.getElementById('fromNode').value = appState.to;
+  appState.from = appState.to;
+
+  // swap target in selector for next journey suggestion
+  updateSensorState(false);
+}
+
+function triggerObstacle() {
+  appState.obstacles++;
+  addLog('WARN','Obstacle detected · slowing down');
+  pushAlert('warn','Obstacle detected — kart decelerating');
+  document.getElementById('obstacleMsg').textContent='⚠ Obstacle detected';
+  document.getElementById('obstacleMsg').style.color='var(--amber)';
+  appState.targetSpeed = Math.max(0, appState.targetSpeed*0.4); // slow down
+
+  obstacleTimeout = setTimeout(()=>{
+    if(appState.mode==='NAVIGATING') {
+      appState.obstacles=0;
+      appState.targetSpeed = 8+Math.floor(Math.random()*8); // resume speed
+      addLog('INFO','Obstacle cleared · resuming speed');
+      document.getElementById('obstacleMsg').textContent='● Path clear';
+      document.getElementById('obstacleMsg').style.color='var(--green)';
+    }
+    obstacleTimeout=null;
+  }, 3000+Math.random()*4000);
+}
+
+function updateBattery() {
+  const b=appState.battery;
+  document.getElementById('battVal').innerHTML=
+    '<span class="m-val" style="color:var(--amber)">'+b+'</span><span class="m-unit">%</span>';
+  document.getElementById('battBar').style.width=b+'%';
+  document.getElementById('battPct').textContent=b+'%';
+  const col = b>50?'var(--green)':b>20?'var(--amber)':'var(--red)';
+  document.getElementById('battBar').style.background=col;
+  document.getElementById('battPct').style.color=col;
+  healthMetrics.batteryHealth = b;
+}
+
+// ═══════════════════════════════════════════════════
+// HEALTH VIEW — dynamic, updates live
+// ═══════════════════════════════════════════════════
+function healthColor(v) {
+  if(v>=80) return 'var(--green)';
+  if(v>=50) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function buildHealthView() {
+  const hv=document.getElementById('healthView');
+  hv.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px" id="healthGridTop"></div>
+    <div style="font-family:var(--hd);font-size:15px;font-weight:700;color:var(--text);margin-bottom:11px;letter-spacing:1px">Component Health</div>
+    <div id="healthBars"></div>
+  `;
+  updateHealthView();
+}
+
+function updateHealthView() {
+  const topGrid=document.getElementById('healthGridTop');
+  const barsEl=document.getElementById('healthBars');
+  if(!topGrid||!barsEl) return;
+
+  const topCards=[
+    ['CPU',Math.round(healthMetrics.cpu),'%'],
+    ['RAM',Math.round(healthMetrics.ram),'%'],
+    ['TEMP',Math.round(healthMetrics.temp),'°C'],
+    ['SIGNAL',Math.round(appState.signal),'%'],
+    ['BATTERY',appState.battery,'%'],
+    ['JOURNEYS',appState.totalJourneys,'trips'],
+  ];
+
+  topGrid.innerHTML=topCards.map(([l,v,u])=>{
+    const c = l==='TEMP'?(v<50?'var(--green)':v<65?'var(--amber)':'var(--red)'):healthColor(v);
+    return `<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">${l}</div>
+      <div style="font-family:var(--hd);font-size:26px;font-weight:700;color:${c}">${v}<span style="font-size:12px;font-family:var(--mono);color:var(--text2)">${u}</span></div>
+    </div>`;
+  }).join('');
+
+  const bars=[
+    ['A* Engine',       Math.round(healthMetrics.astarHealth)],
+    ['Sensor Array',    Math.round(healthMetrics.sensorHealth)],
+    ['Comms Module',    Math.round(healthMetrics.commsHealth)],
+    ['Motor Control',   Math.round(healthMetrics.motorHealth)],
+    ['Battery System',  appState.battery],
+    ['Path Logger',     Math.round(healthMetrics.pathLoggerHealth)],
+  ];
+  barsEl.innerHTML=bars.map(([n,v])=>`
+    <div class="health-row">
+      <span class="health-label">${n}</span>
+      <div class="health-bar"><div class="health-fill" style="width:${v}%;background:${healthColor(v)}"></div></div>
+      <span class="health-pct" style="color:${healthColor(v)}">${v}%</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// USE CASES
+// ═══════════════════════════════════════════════════
+const USE_CASES = [
+  {id:'UC1', name:'Set Destination',       status:'active', desc:'Operator sets goal node via dashboard dropdowns'},
+  {id:'UC2', name:'Start Navigation',      status:'idle',   desc:'Initiates autonomous drive along computed path'},
+  {id:'UC3', name:'View Real-time Map',    status:'active', desc:'Live campus map with kart position overlay'},
+  {id:'UC4', name:'Monitor Vehicle Status',status:'active', desc:'Battery, speed, signal, waypoints live feed'},
+  {id:'UC5', name:'Override / Manual Mode',status:'idle',   desc:'Human operator takes direct control of kart'},
+  {id:'UC6', name:'Compute Optimal Path',  status:'active', desc:'A* algorithm computes shortest campus route'},
+  {id:'UC7', name:'Detect Obstacle',       status:'idle',   desc:'Ultrasonic + LiDAR obstacle perception layer'},
+  {id:'UC8', name:'Emergency Stop',        status:'idle',   desc:'Immediate halt of all drive systems'},
+  {id:'UC9', name:'Send Alert',            status:'active', desc:'Push notifications on system events to operator'},
+  {id:'UC10',name:'Log Journey Data',      status:'active', desc:'Timestamped event and path log storage (UC10)'},
+  {id:'UC11',name:'Update Campus Map',     status:'idle',   desc:'Add/edit nodes and edges in campus graph'},
+  {id:'UC12',name:'View System Health',    status:'active', desc:'CPU, memory, sensor and comms health (UC12)'},
+];
+
+function buildUCView() {
+  const g=document.getElementById('ucGrid'); g.innerHTML='';
+  USE_CASES.forEach(uc=>{
+    const d=document.createElement('div');
+    d.style.cssText='background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;';
+    d.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--accent)">${uc.id}</span>
+        <span class="uc-badge ${uc.status==='active'?'uc-active':'uc-idle'}">${uc.status}</span>
+      </div>
+      <div style="font-family:var(--hd);font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">${uc.name}</div>
+      <div style="font-family:var(--body);font-size:11px;color:var(--text2);line-height:1.5">${uc.desc}</div>`;
+    g.appendChild(d);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════
+function switchTab(el, view) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+
+  const views = {
+    dashboard: 'flex', usecases: 'block', systemlog: 'block', health: 'block'
+  };
+  Object.keys(views).forEach(v=>{
+    document.getElementById('view-'+v).style.display = v===view ? views[v] : 'none';
+  });
+
+  if(view==='usecases')  buildUCView();
+  if(view==='systemlog') { renderFullLog(); }
+  if(view==='health')    { buildHealthView(); }
+
+  if(view==='systemlog') {
+    const b=document.getElementById('logBadge');
+    b.textContent='0'; b.classList.add('hidden');
+  }
+}
+
+function switchRTab(el, tab) {
+  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['sensors','alerts','log'].forEach(t=>{
+    const el2=document.getElementById('rtab-'+t);
+    el2.style.display=t===tab?'block':'none';
+    el2.className='panel-body tab-content'+(t===tab?' active':'');
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('resize', ()=>{ resizeMap(); drawMap(); });
+window.addEventListener('load', ()=>{
+  resizeMap();
+
+  // seed initial log
+  addLog('OK',  'System initialized · sensor_check() passed');
+  addLog('INFO','Vehicle state: IDLE · awaiting destination');
+  addLog('INFO','Campus graph loaded · 25 nodes · 28 edges');
+
+  // seed initial alert
+  pushAlert('info','System online · all checks passed');
+
+  setState('IDLE');
+  renderMiniLog();
+  renderAlerts();
+
+  // preview default path
+  onRouteChange();
+
+  requestAnimationFrame(ts=>{ lastTime=ts; requestAnimationFrame(animate); });
+});
+</script>
+</body>
+</html>
