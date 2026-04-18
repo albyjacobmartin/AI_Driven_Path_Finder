@@ -583,6 +583,20 @@ body {
         </button>
         <button class="btn-stop" id="btnStop" onclick="stopKart()" disabled>⏹ STOP KART</button>
         <button class="btn-manual" id="btnManual" onclick="setManualMode()">🕹 MANUAL OVERRIDE (UC5)</button>
+
+        <!-- Dynamic Replanning Banner — shown only when stopped mid-journey -->
+        <div id="replanBanner" style="display:none;margin-top:8px;padding:10px 12px;
+             background:linear-gradient(135deg,rgba(220,38,38,0.08),rgba(124,58,237,0.08));
+             border:1px solid rgba(220,38,38,0.3);border-radius:8px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+            <span style="font-size:14px">🔄</span>
+            <span style="font-family:var(--hd);font-size:12px;font-weight:700;letter-spacing:1px;color:var(--red)">DYNAMIC REPLANNING READY</span>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text2);line-height:1.6">
+            Resume node: <span id="replanFromLabel" style="color:var(--accent);font-weight:600">—</span><br>
+            Change destination or press <strong>START</strong> to replan from stop point.
+          </div>
+        </div>
       </div>
 
       <div class="sec-hdr">Live Metrics</div>
@@ -920,6 +934,12 @@ const appState = {
   tripDistance: 0,
   totalJourneys: 0,
   lastGoalReached: null,
+  // Dynamic Replanning State
+  stopNode: null,
+  stopSeg: 0,
+  stopT: 0,
+  resumeFromNode: null,
+  wasNavigating: false,
 };
 
 // health dynamic values — updated live
@@ -1049,11 +1069,14 @@ function setState(s) {
   const lbl = {NAVIGATING:'NAVIGATING',IDLE:'IDLE',PLANNING:'PLANNING…',STOPPED:'STOPPED',MANUAL:'MANUAL CTRL'};
   sv.textContent = lbl[s]||s;
 
+  const stoppedSub = appState.resumeFromNode
+    ? 'Halted · resume from '+NODES[appState.resumeFromNode].label+' or change destination'
+    : 'Kart halted';
   const subs = {
     IDLE:'Awaiting destination input',
     PLANNING:'Computing A* optimal path…',
     NAVIGATING:'Moving along waypoints',
-    STOPPED:'Kart halted',
+    STOPPED: stoppedSub,
     MANUAL:'Human operator in control',
   };
   document.getElementById('stateSub').textContent = subs[s]||'';
@@ -1085,6 +1108,37 @@ function setState(s) {
   document.getElementById('btnNav').disabled   = (s==='NAVIGATING'||s==='PLANNING');
   document.getElementById('btnStop').disabled  = (s==='IDLE'||s==='STOPPED');
 
+  // Lock "From" dropdown when stopped mid-journey (replanning always uses stop node)
+  const fromDrop = document.getElementById('fromNode');
+  if(fromDrop) {
+    const lockFrom = (s==='NAVIGATING'||s==='PLANNING'||
+                     (s==='STOPPED' && appState.wasNavigating && appState.resumeFromNode));
+    fromDrop.disabled = lockFrom;
+    fromDrop.style.opacity = lockFrom ? '0.55' : '1';
+    fromDrop.title = (s==='STOPPED' && appState.wasNavigating)
+      ? 'Locked to stop point: '+( appState.resumeFromNode && NODES[appState.resumeFromNode] ? NODES[appState.resumeFromNode].label : '')
+      : '';
+  }
+
+  // Dynamic replanning banner — visible when stopped mid-journey
+  const banner = document.getElementById('replanBanner');
+  const isMidJourneyStop = s==='STOPPED' && appState.wasNavigating && appState.resumeFromNode;
+  if(banner) {
+    banner.style.display = isMidJourneyStop ? 'block' : 'none';
+    if(isMidJourneyStop) {
+      const lbl = document.getElementById('replanFromLabel');
+      if(lbl) lbl.textContent = NODES[appState.resumeFromNode] ? NODES[appState.resumeFromNode].label : appState.resumeFromNode;
+    }
+  }
+
+  // Update START button label to show context
+  const btnNav = document.getElementById('btnNav');
+  if(s==='STOPPED' && isMidJourneyStop) {
+    btnNav.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> RESUME / REPLAN';
+  } else if(s!=='NAVIGATING' && s!=='PLANNING') {
+    btnNav.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> START NAVIGATION';
+  }
+
   // speed: zero when not navigating
   if(s!=='NAVIGATING') {
     appState.targetSpeed = 0;
@@ -1106,9 +1160,10 @@ function setState(s) {
 
   // UC status update
   USE_CASES.forEach(uc => {
-    if(uc.id==='UC2') uc.status = (s==='NAVIGATING')?'active':'idle';
-    if(uc.id==='UC5') uc.status = (s==='MANUAL')?'active':'idle';
-    if(uc.id==='UC8') uc.status = (s==='STOPPED')?'active':'idle';
+    if(uc.id==='UC2')  uc.status = (s==='NAVIGATING')?'active':'idle';
+    if(uc.id==='UC5')  uc.status = (s==='MANUAL')?'active':'idle';
+    if(uc.id==='UC8')  uc.status = (s==='STOPPED')?'active':'idle';
+    if(uc.id==='UC13') uc.status = (s==='STOPPED'&&appState.wasNavigating)?'active':'idle';
   });
 }
 
@@ -1146,33 +1201,70 @@ function updateSensorState(active) {
 // NAVIGATION CONTROLS
 // ═══════════════════════════════════════════════════
 function onRouteChange() {
-  // preview path when dropdowns change (only if idle/stopped)
+  // Preview path when dropdowns change (only if idle/stopped).
+  // When stopped mid-journey, the "From" node is locked to the stop node —
+  // only the destination can change for replanning preview.
   if(appState.mode==='IDLE'||appState.mode==='STOPPED') {
-    const from = document.getElementById('fromNode').value;
+    const isStopped = appState.mode==='STOPPED' && appState.wasNavigating && appState.resumeFromNode;
+    // Lock "from" to the stop node if stopped mid-journey
+    const from = isStopped ? appState.resumeFromNode : document.getElementById('fromNode').value;
     const to   = document.getElementById('toNode').value;
-    if(from!==to) {
+
+    if(isStopped) {
+      // Keep the from dropdown pinned to the stop node for visual clarity
+      document.getElementById('fromNode').value = from;
+    }
+
+    if(from !== to) {
       const r = astar(from, to);
       appState.path = r.path;
       appState.dist = r.dist;
-      appState.from = from; appState.to = to;
-      document.getElementById('pathBadge').textContent =
-        'Preview: '+NODES[from].label+' → '+NODES[to].label+' ('+r.dist+'m)';
+      appState.to   = to;
+      if(!isStopped) appState.from = from;
+
+      const previewLabel = isStopped
+        ? 'Replan preview: '+NODES[from].label+' → '+NODES[to].label+' ('+r.dist+'m)'
+        : 'Preview: '+NODES[from].label+' → '+NODES[to].label+' ('+r.dist+'m)';
+      document.getElementById('pathBadge').textContent = previewLabel;
       document.getElementById('s-cost').textContent = r.dist;
-      document.getElementById('s-cost-sub').textContent = 'preview · not started';
+      document.getElementById('s-cost-sub').textContent = isStopped ? 'meters · replan preview' : 'preview · not started';
       document.getElementById('sbar-cost').style.width='60%';
     }
   }
 }
 
 function startNavigation() {
-  const from = document.getElementById('fromNode').value;
-  const to   = document.getElementById('toNode').value;
-  if(from===to) { pushAlert('warn','Start and destination must be different'); return; }
+  const fromSel = document.getElementById('fromNode').value;
+  const toSel   = document.getElementById('toNode').value;
 
-  appState.from=from; appState.to=to;
+  // ── Dynamic Replanning Logic ──
+  // If kart was stopped mid-journey, always replan from the stop node,
+  // regardless of what the "From" dropdown currently shows.
+  const isStopped = appState.mode === 'STOPPED' && appState.wasNavigating && appState.resumeFromNode;
+  const from = isStopped ? appState.resumeFromNode : fromSel;
+  const to   = toSel;
+
+  if(from === to) { pushAlert('warn','Already at destination — choose a different target'); return; }
+
+  // Detect if destination changed after a stop
+  const destinationChanged = isStopped && (to !== appState.to);
+  if(isStopped) {
+    if(destinationChanged) {
+      addLog('INFO','Replanning from stop point: '+NODES[from].label+' → '+NODES[to].label+' (destination changed)');
+      pushAlert('info','Replanning from '+NODES[from].label+' → new target: '+NODES[to].label);
+    } else {
+      addLog('INFO','Resuming from stop point: '+NODES[from].label+' → '+NODES[to].label);
+      pushAlert('info','Resuming navigation from '+NODES[from].label);
+    }
+  }
+
+  appState.from = from;
+  appState.to   = to;
+
   setState('PLANNING');
-  addLog('INFO','Planning A* path: '+NODES[from].label+' → '+NODES[to].label);
-  document.getElementById('pathBadge').textContent = 'Computing route…';
+  const planLabel = isStopped ? (destinationChanged ? 'Replanning A* path' : 'Resuming — replanning A* path') : 'Planning A* path';
+  addLog('INFO', planLabel+': '+NODES[from].label+' → '+NODES[to].label);
+  document.getElementById('pathBadge').textContent = isStopped ? '◌ Replanning route from stop point…' : 'Computing route…';
 
   setTimeout(()=>{
     const r = astar(from, to);
@@ -1181,44 +1273,109 @@ function startNavigation() {
       pushAlert('error','No path found between selected nodes');
       setState('IDLE'); return;
     }
+
     appState.path=r.path; appState.dist=r.dist;
+    // Always start kart from the very beginning of the new/replanned path
     appState.kartSeg=0; appState.kartT=0;
     appState.waypoints=r.path.length; appState.wpDone=0;
     appState.targetSpeed = 8 + Math.floor(Math.random()*8);
     appState.tripDistance = 0;
     appState.totalJourneys++;
 
+    // Clear stop state now that we have a fresh plan
+    appState.stopNode = null;
+    appState.stopSeg  = 0;
+    appState.stopT    = 0;
+    appState.resumeFromNode = null;
+    appState.wasNavigating  = false;
+
+    // Update "from" dropdown to match actual start of replanned path
+    document.getElementById('fromNode').value = from;
+
+    const routeLabel = isStopped
+      ? (destinationChanged ? 'Replanned' : 'Resumed')
+      : 'Route';
     document.getElementById('pathBadge').textContent =
-      'Route: '+NODES[from].label+' → '+NODES[to].label+' ('+r.dist+'m)';
+      routeLabel+': '+NODES[from].label+' → '+NODES[to].label+' ('+r.dist+'m)';
     document.getElementById('s-cost').textContent = r.dist;
-    document.getElementById('s-cost-sub').textContent = 'meters · optimal';
+    document.getElementById('s-cost-sub').textContent = isStopped ? 'meters · replanned' : 'meters · optimal';
     document.getElementById('sbar-cost').style.width='100%';
-    document.getElementById('distVal').querySelector('.m-val,.m-unit') ;
     setDistVal(r.dist);
 
     setState('NAVIGATING');
-    addLog('OK','Path computed · '+r.path.length+' waypoints · '+r.dist+'m');
-    addLog('INFO','Navigation started');
+    const wpLabel = isStopped ? 'Replanned path · ' : 'Path computed · ';
+    addLog('OK', wpLabel+r.path.length+' waypoints · '+r.dist+'m');
+    addLog('INFO', isStopped ? 'Navigation resumed from '+NODES[from].label : 'Navigation started');
     pushAlert('info','Navigation active · '+r.path.length+' waypoints');
   }, 900);
 }
 
+function findNearestNodeOnPath() {
+  // Determines the closest path node to the kart's current interpolated position.
+  // If kart is past the midpoint of segment, we favour the ahead node.
+  if(!appState.path || appState.path.length < 2) return appState.from;
+  const seg = Math.min(appState.stopSeg, appState.path.length - 2);
+  const t   = appState.stopT;
+  // If kart is more than halfway to next node, resume from next node
+  return t >= 0.5 ? appState.path[seg + 1] : appState.path[seg];
+}
+
 function stopKart() {
   if(appState.mode!=='NAVIGATING'&&appState.mode!=='MANUAL') return;
+
+  // Capture exact position at stop
+  appState.stopSeg = appState.kartSeg;
+  appState.stopT   = appState.kartT;
+  appState.wasNavigating = true;
+
+  // Determine the best node to replan from
+  const nearestNode = findNearestNodeOnPath();
+  appState.stopNode = nearestNode;
+  appState.resumeFromNode = nearestNode;
+
   setState('STOPPED');
   appState.targetSpeed=0; appState.speed=0;
   updateSpeedDisplay(0);
-  addLog('WARN','Kart stopped by operator (UC5)');
-  pushAlert('warn','Kart manually stopped');
+  addLog('WARN','Kart stopped at '+NODES[nearestNode].label+' (UC5) · seg='+appState.stopSeg+' t='+appState.stopT.toFixed(2));
+  pushAlert('warn','Kart stopped · resume from '+NODES[nearestNode].label);
+
+  // Update "From" dropdown to stopped node so replanning is accurate
+  document.getElementById('fromNode').value = nearestNode;
+  appState.from = nearestNode;
+
+  // Refresh state sub-label with context
+  document.getElementById('stateSub').textContent =
+    'Halted at '+NODES[nearestNode].label+' · resume or replan';
+
+  // Show resume hint in path badge
+  document.getElementById('pathBadge').textContent =
+    '■ Stopped at '+NODES[nearestNode].label+' → Press START to resume/replan';
 }
 
 function setManualMode() {
   if(appState.mode==='MANUAL') {
-    // toggle back to idle
-    setState('IDLE');
-    addLog('INFO','Manual mode disengaged — returning to IDLE');
+    // Toggle back — if we were mid-journey, stay STOPPED so replanning is available
+    if(appState.wasNavigating && appState.resumeFromNode) {
+      setState('STOPPED');
+      addLog('INFO','Manual mode disengaged — kart stopped · replan available from '+NODES[appState.resumeFromNode].label);
+    } else {
+      setState('IDLE');
+      addLog('INFO','Manual mode disengaged — returning to IDLE');
+    }
     document.getElementById('btnManual').textContent='🕹 MANUAL OVERRIDE (UC5)';
   } else {
+    // If currently navigating, capture stop position before entering manual
+    if(appState.mode==='NAVIGATING' && appState.path.length>=2) {
+      appState.stopSeg = appState.kartSeg;
+      appState.stopT   = appState.kartT;
+      const nearestNode = findNearestNodeOnPath();
+      appState.stopNode       = nearestNode;
+      appState.resumeFromNode = nearestNode;
+      appState.wasNavigating  = true;
+      document.getElementById('fromNode').value = nearestNode;
+      appState.from = nearestNode;
+      addLog('INFO','Manual override — stop captured at '+NODES[nearestNode].label);
+    }
     setState('MANUAL');
     addLog('WARN','Manual override engaged (UC5) — human control active');
     pushAlert('warn','Manual override active — autonomous systems paused');
@@ -1248,15 +1405,29 @@ function openModal()  { document.getElementById('emergencyModal').classList.add(
 function closeModal() { document.getElementById('emergencyModal').classList.remove('open'); }
 function confirmEmergency() {
   closeModal();
-  appState.path=[]; appState.speed=0; appState.targetSpeed=0;
+  // Capture stop position before clearing path (for potential replanning)
+  if(appState.mode==='NAVIGATING' && appState.path.length>=2) {
+    appState.stopSeg = appState.kartSeg;
+    appState.stopT   = appState.kartT;
+    const nearestNode = findNearestNodeOnPath();
+    appState.stopNode       = nearestNode;
+    appState.resumeFromNode = nearestNode;
+    appState.wasNavigating  = true;
+    document.getElementById('fromNode').value = nearestNode;
+    appState.from = nearestNode;
+  }
+  appState.speed=0; appState.targetSpeed=0;
   setState('STOPPED');
   updateSpeedDisplay(0);
   document.getElementById('mapBadge').textContent='⛔ EMERGENCY STOP ACTIVATED';
   document.getElementById('mapBadge').className='map-badge status-stop';
   document.getElementById('obstacleMsg').textContent='⛔ EMERGENCY STOP';
   document.getElementById('obstacleMsg').style.color='var(--red)';
-  addLog('ERROR','EMERGENCY STOP triggered by operator');
-  pushAlert('error','EMERGENCY STOP activated — all systems halted');
+  addLog('ERROR','EMERGENCY STOP triggered — kart halted');
+  if(appState.stopNode) {
+    addLog('INFO','Stopped near '+NODES[appState.stopNode].label+' · replan available');
+  }
+  pushAlert('error','EMERGENCY STOP activated — press START to replan from current position');
 }
 
 // ═══════════════════════════════════════════════════
@@ -1372,22 +1543,50 @@ function drawMap() {
     mctx.fillText(lbl,p.x,ly);
   });
 
-  // Kart — only draw when navigating or manual
-  if(appState.path.length>=2 && (appState.mode==='NAVIGATING'||appState.mode==='MANUAL')) {
+  // Kart — draw when navigating, manual, OR stopped mid-journey
+  const showKart = appState.path.length>=2 &&
+    (appState.mode==='NAVIGATING' || appState.mode==='MANUAL' ||
+     (appState.mode==='STOPPED' && appState.wasNavigating));
+
+  if(showKart) {
     const seg=Math.min(appState.kartSeg, appState.path.length-2);
     const pa=mpx(appState.path[seg]), pb=mpx(appState.path[seg+1]);
     const t=appState.kartT;
     const kx=pa.x+(pb.x-pa.x)*t, ky=pa.y+(pb.y-pa.y)*t;
     const angle=Math.atan2(pb.y-pa.y,pb.x-pa.x);
+    const isStopped = appState.mode==='STOPPED';
+
     mctx.save(); mctx.translate(kx,ky); mctx.rotate(angle);
-    mctx.shadowColor='rgba(5,150,105,0.4)'; mctx.shadowBlur=12;
+
+    // Stopped state: pulsing red halo
+    if(isStopped) {
+      const pulse = 0.5 + 0.5*Math.sin(Date.now()/300);
+      mctx.beginPath(); mctx.arc(0,0,16+pulse*4,0,Math.PI*2);
+      mctx.fillStyle='rgba(220,38,38,'+(0.08+pulse*0.1)+')'; mctx.fill();
+    } else {
+      mctx.shadowColor='rgba(5,150,105,0.4)'; mctx.shadowBlur=12;
+    }
+
     mctx.beginPath(); mctx.roundRect(-9,-5.5,18,11,3);
-    mctx.fillStyle='#059669'; mctx.fill();
-    mctx.strokeStyle='#065f46'; mctx.lineWidth=1; mctx.stroke();
+    mctx.fillStyle = isStopped ? '#dc2626' : '#059669'; mctx.fill();
+    mctx.strokeStyle = isStopped ? '#991b1b' : '#065f46'; mctx.lineWidth=1; mctx.stroke();
     mctx.shadowBlur=0;
     mctx.fillStyle='#fffbeb'; mctx.fillRect(7,-3.5,3.5,3); mctx.fillRect(7,0.5,3.5,3);
     mctx.fillStyle='#374151'; mctx.fillRect(-9,-7,5,2.5); mctx.fillRect(-9,4.5,5,2.5);
     mctx.fillRect(5,-7,5,2.5); mctx.fillRect(5,4.5,5,2.5);
+
+    // Stopped label above kart
+    if(isStopped) {
+      mctx.rotate(-angle);
+      mctx.font='bold 10px "JetBrains Mono",monospace';
+      mctx.textAlign='center'; mctx.textBaseline='bottom';
+      const lbl='■ STOPPED';
+      const lw=mctx.measureText(lbl).width;
+      mctx.fillStyle='rgba(255,255,255,0.92)';
+      mctx.fillRect(-lw/2-4,-22,lw+8,13);
+      mctx.fillStyle='#dc2626';
+      mctx.fillText(lbl,0,-11);
+    }
     mctx.restore();
   }
 }
@@ -1466,6 +1665,9 @@ function animate(ts) {
         addLog('INFO','Waypoint '+(appState.wpDone)+'/'+appState.waypoints+' reached');
       }
     }
+    // Continuously track live position so stopKart() always has latest snapshot
+    appState.stopSeg = appState.kartSeg;
+    appState.stopT   = appState.kartT;
 
     // battery drain only when moving
     appState.batteryDrain += dt * 0.008;
@@ -1573,6 +1775,17 @@ function goalReached() {
   // update from node to destination
   document.getElementById('fromNode').value = appState.to;
   appState.from = appState.to;
+
+  // Clear any replanning/stop state on successful arrival
+  appState.stopNode       = null;
+  appState.stopSeg        = 0;
+  appState.stopT          = 0;
+  appState.resumeFromNode = null;
+  appState.wasNavigating  = false;
+
+  // Re-enable From dropdown
+  const fd = document.getElementById('fromNode');
+  if(fd) { fd.disabled=false; fd.style.opacity='1'; fd.title=''; }
 
   // swap target in selector for next journey suggestion
   updateSensorState(false);
@@ -1683,6 +1896,7 @@ const USE_CASES = [
   {id:'UC10',name:'Log Journey Data',      status:'active', desc:'Timestamped event and path log storage (UC10)'},
   {id:'UC11',name:'Update Campus Map',     status:'idle',   desc:'Add/edit nodes and edges in campus graph'},
   {id:'UC12',name:'View System Health',    status:'active', desc:'CPU, memory, sensor and comms health (UC12)'},
+  {id:'UC13',name:'Dynamic Path Replanning', status:'active', desc:'On stop, A* replans from nearest node to same or new destination'},
 ];
 
 function buildUCView() {
